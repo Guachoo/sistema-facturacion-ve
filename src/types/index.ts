@@ -88,6 +88,7 @@ export interface BcvRate {
   date: string;
   rate: number;
   source: string;
+  lastUpdate?: string;
 }
 
 export interface SalesBookEntry {
