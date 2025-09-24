@@ -15,30 +15,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    minify: 'esbuild',
-    target: 'es2020',
+    sourcemap: false,
+    minify: false,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('@radix-ui')) {
-              return 'ui-vendor';
-            }
-            if (id.includes('recharts')) {
-              return 'chart-vendor';
-            }
-            if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('pdf')) {
-              return 'pdf-vendor';
-            }
-            return 'vendor';
-          }
-        },
-      },
-    },
-    chunkSizeWarningLimit: 1000,
+        manualChunks: {
+          'vendor': ['react', 'react-dom'],
+          'ui': ['@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-dropdown-menu'],
+        }
+      }
+    }
   },
   esbuild: {
     logOverride: { 'this-is-undefined-in-esm': 'silent' }
