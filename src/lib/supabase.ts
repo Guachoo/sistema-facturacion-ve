@@ -30,8 +30,11 @@ if (!supabaseAnonKey || typeof supabaseAnonKey !== 'string' || supabaseAnonKey.t
   throw new Error('Clave anónima de Supabase inválida o faltante');
 }
 
+// Create Supabase client
+let supabase: any;
+
 try {
-  export const supabase = createClient(supabaseUrl.trim(), supabaseAnonKey.trim(), {
+  supabase = createClient(supabaseUrl.trim(), supabaseAnonKey.trim(), {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
@@ -43,3 +46,5 @@ try {
   console.error('Error creating Supabase client:', error);
   throw new Error('Error al crear cliente de Supabase');
 }
+
+export { supabase };
