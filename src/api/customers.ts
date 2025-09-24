@@ -52,68 +52,97 @@ export const useCustomers = () => {
   });
 };
 
+// Helper function to normalize string values
+const normalizeString = (value: string | null | undefined): string | null => {
+  if (value === null || value === undefined) return null;
+  const trimmed = String(value).trim();
+  return trimmed === '' ? null : trimmed;
+};
+
 export const useCreateCustomer = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (customer: Omit<Customer, 'id'>): Promise<Customer> => {
-      console.log('Creating customer with data:', customer);
+      console.log('Creating customer with raw data:', customer);
 
+      // Normalize all data to prevent undefined/null header issues
       const insertData = {
-        rif: customer.rif.trim().toUpperCase(),
-        razon_social: customer.razonSocial.trim(),
-        nombre: customer.nombre?.trim() || null,
-        domicilio: customer.domicilio.trim(),
-        telefono: customer.telefono?.trim() || null,
-        email: customer.email?.trim() || null,
-        tipo_contribuyente: customer.tipoContribuyente,
+        rif: normalizeString(customer.rif)?.toUpperCase() || '',
+        razon_social: normalizeString(customer.razonSocial) || '',
+        nombre: normalizeString(customer.nombre),
+        domicilio: normalizeString(customer.domicilio) || '',
+        telefono: normalizeString(customer.telefono),
+        email: normalizeString(customer.email),
+        tipo_contribuyente: customer.tipoContribuyente || 'ordinario',
       };
 
-      console.log('Supabase insert data:', insertData);
-
-      const { data, error } = await supabase
-        .from('customers')
-        .insert([insertData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error details:', error);
-
-        // Handle specific errors
-        if (error.code === '23505') {
-          throw new Error('Ya existe un cliente con este RIF');
-        }
-
-        if (error.code === '42501') {
-          throw new Error('No tienes permisos para crear clientes. Verifica la configuración de Supabase.');
-        }
-
-        if (error.message.includes('RLS')) {
-          throw new Error('Error de permisos en la base de datos. Contacta al administrador.');
-        }
-
-        throw new Error(error.message || 'Error desconocido al crear el cliente');
+      // Validate required fields
+      if (!insertData.rif) {
+        throw new Error('RIF es requerido');
+      }
+      if (!insertData.razon_social) {
+        throw new Error('Razón social es requerida');
+      }
+      if (!insertData.domicilio) {
+        throw new Error('Domicilio es requerido');
       }
 
-      if (!data) {
-        throw new Error('No se recibieron datos del servidor');
+      console.log('Normalized data for Supabase:', insertData);
+
+      try {
+        const { data, error } = await supabase
+          .from('customers')
+          .insert([insertData])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Supabase error details:', error);
+
+          // Handle specific database errors
+          if (error.code === '23505') {
+            throw new Error(`Ya existe un cliente con el RIF: ${insertData.rif}`);
+          }
+
+          if (error.code === '42501' || error.message.includes('RLS')) {
+            throw new Error('Error de permisos. Verifica la configuración de Supabase.');
+          }
+
+          if (error.code === '23502') {
+            throw new Error('Faltan campos obligatorios. Verifica que todos los datos estén completos.');
+          }
+
+          // Return the actual error message for debugging
+          throw new Error(error.message || 'Error desconocido en la base de datos');
+        }
+
+        if (!data) {
+          throw new Error('No se recibieron datos del servidor después de crear el cliente');
+        }
+
+        console.log('Customer created successfully:', data);
+
+        // Return normalized customer object
+        return {
+          id: data.id,
+          rif: data.rif,
+          razonSocial: data.razon_social,
+          nombre: data.nombre,
+          domicilio: data.domicilio,
+          telefono: data.telefono,
+          email: data.email,
+          tipoContribuyente: data.tipo_contribuyente,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+
+      } catch (dbError: any) {
+        console.error('Database operation failed:', dbError);
+
+        // Re-throw with original message for better debugging
+        throw new Error(dbError.message || 'Error en la operación de base de datos');
       }
-
-      console.log('Customer created successfully:', data);
-
-      return {
-        id: data.id,
-        rif: data.rif,
-        razonSocial: data.razon_social,
-        nombre: data.nombre,
-        domicilio: data.domicilio,
-        telefono: data.telefono,
-        email: data.email,
-        tipoContribuyente: data.tipo_contribuyente,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
