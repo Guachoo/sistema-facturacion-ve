@@ -91,6 +91,18 @@ export const useCreateCustomer = () => {
       console.log('Normalized data for Supabase:', insertData);
 
       try {
+        // Additional debug info for production issues
+        console.log('Supabase client status:', {
+          clientExists: !!supabase,
+          url: supabase?.supabaseUrl,
+          keyExists: !!supabase?.supabaseKey
+        });
+
+        // Test Supabase connection before inserting
+        if (!supabase) {
+          throw new Error('Cliente Supabase no inicializado correctamente');
+        }
+
         const { data, error } = await supabase
           .from('customers')
           .insert([insertData])
