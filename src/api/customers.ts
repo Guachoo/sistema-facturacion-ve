@@ -57,21 +57,50 @@ export const useCreateCustomer = () => {
 
   return useMutation({
     mutationFn: async (customer: Omit<Customer, 'id'>): Promise<Customer> => {
+      console.log('Creating customer with data:', customer);
+
+      const insertData = {
+        rif: customer.rif.trim().toUpperCase(),
+        razon_social: customer.razonSocial.trim(),
+        nombre: customer.nombre?.trim() || null,
+        domicilio: customer.domicilio.trim(),
+        telefono: customer.telefono?.trim() || null,
+        email: customer.email?.trim() || null,
+        tipo_contribuyente: customer.tipoContribuyente,
+      };
+
+      console.log('Supabase insert data:', insertData);
+
       const { data, error } = await supabase
         .from('customers')
-        .insert([{
-          rif: customer.rif,
-          razon_social: customer.razonSocial,
-          nombre: customer.nombre,
-          domicilio: customer.domicilio,
-          telefono: customer.telefono,
-          email: customer.email,
-          tipo_contribuyente: customer.tipoContribuyente,
-        }])
+        .insert([insertData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', error);
+
+        // Handle specific errors
+        if (error.code === '23505') {
+          throw new Error('Ya existe un cliente con este RIF');
+        }
+
+        if (error.code === '42501') {
+          throw new Error('No tienes permisos para crear clientes. Verifica la configuración de Supabase.');
+        }
+
+        if (error.message.includes('RLS')) {
+          throw new Error('Error de permisos en la base de datos. Contacta al administrador.');
+        }
+
+        throw new Error(error.message || 'Error desconocido al crear el cliente');
+      }
+
+      if (!data) {
+        throw new Error('No se recibieron datos del servidor');
+      }
+
+      console.log('Customer created successfully:', data);
 
       return {
         id: data.id,
@@ -82,6 +111,8 @@ export const useCreateCustomer = () => {
         telefono: data.telefono,
         email: data.email,
         tipoContribuyente: data.tipo_contribuyente,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
       };
     },
     onSuccess: () => {

@@ -96,8 +96,13 @@ export function CustomersPage() {
           toast.success('Cliente creado correctamente');
           handleCloseDialog();
         },
-        onError: () => {
-          toast.error('Error al crear el cliente');
+        onError: (error: any) => {
+          console.error('Error creating customer:', error);
+          const errorMessage = error?.message || 'Error desconocido al crear el cliente';
+          toast.error(errorMessage, {
+            description: 'Revisa los datos e inténtalo de nuevo',
+            duration: 5000,
+          });
         },
       });
     }
