@@ -11,6 +11,7 @@ import { CustomersPage } from '@/pages/customers';
 import { ItemsPage } from '@/pages/items';
 import { InvoicesPage } from '@/pages/invoices';
 import { InvoiceWizardPage } from '@/pages/invoice-wizard';
+import { ReportsPage } from '@/pages/reports';
 import { SalesBookPage } from '@/pages/reports/sales-book';
 import { IgtfReportPage } from '@/pages/reports/igtf-report';
 import { CompanySettingsPage } from '@/pages/company-settings';
@@ -61,6 +62,7 @@ function AppRoutes() {
         <Route path="items" element={<ItemsPage />} />
         <Route path="facturas" element={<InvoicesPage />} />
         <Route path="facturas/nueva" element={<InvoiceWizardPage />} />
+        <Route path="reportes" element={<ReportsPage />} />
         <Route path="reportes/libro-ventas" element={<SalesBookPage />} />
         <Route path="reportes/igtf" element={<IgtfReportPage />} />
         <Route path="configuracion/empresa" element={<CompanySettingsPage />} />
