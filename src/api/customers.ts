@@ -29,14 +29,38 @@ export const useCustomers = () => {
   return useQuery({
     queryKey: ['customers'],
     queryFn: async (): Promise<Customer[]> => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      console.log('Fetching customers via REST API');
 
-      if (error) throw error;
+      // Use direct REST API to avoid supabase-js headers issues
+      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
 
-      return (data || []).map(row => ({
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?order=created_at.desc`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      console.log('Customers fetch response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('REST API error fetching customers:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Customers fetched via REST API:', data?.length || 0, 'records');
+
+      if (!Array.isArray(data)) {
+        console.error('Invalid response format:', data);
+        return [];
+      }
+
+      return data.map(row => ({
         id: row.id,
         rif: row.rif,
         razonSocial: row.razon_social,
