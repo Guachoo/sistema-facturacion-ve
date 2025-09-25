@@ -240,7 +240,7 @@ export function InvoiceWizardPage() {
     const invoiceData: Omit<Invoice, 'id' | 'numero' | 'numeroControl'> = {
       fecha: new Date().toISOString(),
       emisor: {
-        nombre: 'Mi Empresa C.A.',
+        nombre: 'Axiona, C.A.',
         rif: 'J-12345678-9',
         domicilio: 'Caracas, Venezuela'
       },
@@ -724,7 +724,7 @@ export function InvoiceWizardPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-1">
-                          <p className="font-medium">Mi Empresa C.A.</p>
+                          <p className="font-medium">Axiona, C.A.</p>
                           <p className="text-sm text-muted-foreground font-mono">J-12345678-9</p>
                           <p className="text-sm text-muted-foreground">Caracas, Venezuela</p>
                         </div>

@@ -37,7 +37,7 @@ export function Sidebar() {
           <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-teal-600 rounded-lg flex items-center justify-center">
             <FileText className="h-5 w-5 text-white" />
           </div>
-          <span className="ml-3 text-xl font-bold">FacturaVE</span>
+          <span className="ml-3 text-xl font-bold">Axiona</span>
         </div>
         <nav className="flex flex-1 flex-col">
           <ul role="list" className="flex flex-1 flex-col gap-y-7">

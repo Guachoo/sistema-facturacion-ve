@@ -57,7 +57,7 @@ export function Navbar() {
             <div className="h-8 w-8 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg flex items-center justify-center">
               <FileText className="h-5 w-5 text-white" />
             </div>
-            <span className="text-lg md:text-xl font-bold">FacturaVE</span>
+            <span className="text-lg md:text-xl font-bold">Axiona</span>
           </Link>
 
           <NavigationMenu className="hidden md:block">

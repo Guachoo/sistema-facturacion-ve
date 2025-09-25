@@ -54,7 +54,7 @@ export function LoginPage() {
               <FileText className="h-7 w-7 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">FacturaVE</CardTitle>
+          <CardTitle className="text-2xl text-center">Axiona</CardTitle>
           <CardDescription className="text-center">
             Sistema de Facturación Digital
           </CardDescription>
