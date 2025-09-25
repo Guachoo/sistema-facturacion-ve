@@ -91,66 +91,71 @@ export const useCreateCustomer = () => {
       console.log('Normalized data for Supabase:', insertData);
 
       try {
-        // Additional debug info for production issues
-        console.log('Supabase client status:', {
-          clientExists: !!supabase,
-          url: supabase?.supabaseUrl,
-          keyExists: !!supabase?.supabaseKey
+        // BYPASS SUPABASE-JS COMPLETELY - Use direct REST API
+        const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
+
+        console.log('Using direct REST API to bypass supabase-js headers issue');
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/customers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(insertData)
         });
 
-        // Test Supabase connection before inserting
-        if (!supabase) {
-          throw new Error('Cliente Supabase no inicializado correctamente');
+        console.log('Fetch response status:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('REST API error:', errorText);
+          throw new Error(`Error ${response.status}: ${errorText}`);
         }
 
-        const { data, error } = await supabase
-          .from('customers')
-          .insert([insertData])
-          .select()
-          .single();
+        const data = await response.json();
+        console.log('REST API response:', data);
 
-        if (error) {
-          console.error('Supabase error details:', error);
-
-          // Handle specific database errors
-          if (error.code === '23505') {
-            throw new Error(`Ya existe un cliente con el RIF: ${insertData.rif}`);
-          }
-
-          if (error.code === '42501' || error.message.includes('RLS')) {
-            throw new Error('Error de permisos. Verifica la configuración de Supabase.');
-          }
-
-          if (error.code === '23502') {
-            throw new Error('Faltan campos obligatorios. Verifica que todos los datos estén completos.');
-          }
-
-          // Return the actual error message for debugging
-          throw new Error(error.message || 'Error desconocido en la base de datos');
+        if (!data || !Array.isArray(data) || data.length === 0) {
+          throw new Error('No se recibieron datos del servidor');
         }
 
-        if (!data) {
-          throw new Error('No se recibieron datos del servidor después de crear el cliente');
-        }
+        const createdCustomer = data[0];
 
-        console.log('Customer created successfully:', data);
+        console.log('Customer created successfully via REST API:', createdCustomer);
 
         // Return normalized customer object
         return {
-          id: data.id,
-          rif: data.rif,
-          razonSocial: data.razon_social,
-          nombre: data.nombre,
-          domicilio: data.domicilio,
-          telefono: data.telefono,
-          email: data.email,
-          tipoContribuyente: data.tipo_contribuyente,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
+          id: createdCustomer.id,
+          rif: createdCustomer.rif,
+          razonSocial: createdCustomer.razon_social,
+          nombre: createdCustomer.nombre,
+          domicilio: createdCustomer.domicilio,
+          telefono: createdCustomer.telefono,
+          email: createdCustomer.email,
+          tipoContribuyente: createdCustomer.tipo_contribuyente,
+          createdAt: createdCustomer.created_at,
+          updatedAt: createdCustomer.updated_at,
         };
 
       } catch (dbError: any) {
-        console.error('Database operation failed:', dbError);
+        console.error('REST API operation failed:', dbError);
+
+        // Handle specific HTTP/REST errors
+        if (dbError.message?.includes('409') || dbError.message?.includes('duplicate')) {
+          throw new Error(`Ya existe un cliente con el RIF: ${insertData.rif}`);
+        }
+
+        if (dbError.message?.includes('401') || dbError.message?.includes('403')) {
+          throw new Error('Error de permisos. Verifica la configuración de Supabase.');
+        }
+
+        if (dbError.message?.includes('400')) {
+          throw new Error('Datos inválidos. Verifica que todos los campos estén completos.');
+        }
 
         // Re-throw with original message for better debugging
         throw new Error(dbError.message || 'Error en la operación de base de datos');
