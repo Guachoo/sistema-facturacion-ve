@@ -6,14 +6,38 @@ export const useInvoices = () => {
   return useQuery({
     queryKey: ['invoices'],
     queryFn: async (): Promise<Invoice[]> => {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('*')
-        .order('fecha', { ascending: false });
+      console.log('Fetching invoices via REST API');
 
-      if (error) throw error;
+      // Use direct REST API to avoid supabase-js headers issues
+      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
 
-      return (data || []).map(row => ({
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/invoices?order=fecha.desc`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      console.log('Invoices fetch response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('REST API error fetching invoices:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Invoices fetched via REST API:', data?.length || 0, 'records');
+
+      if (!Array.isArray(data)) {
+        console.error('Invalid invoices response format:', data);
+        return [];
+      }
+
+      return data.map(row => ({
         id: row.id,
         numero: row.numero,
         numeroControl: row.numero_control,
@@ -57,103 +81,50 @@ export const useCreateInvoice = () => {
 
   return useMutation({
     mutationFn: async (invoice: Omit<Invoice, 'id' | 'numero' | 'numeroControl'>): Promise<Invoice> => {
-      // Generate invoice number
-      const { data: lastInvoice } = await supabase
-        .from('invoices')
-        .select('numero')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      console.log('Creating invoice via REST API:', invoice);
 
-      const lastNumber = lastInvoice ? parseInt(lastInvoice.numero.split('-')[1]) : 0;
-      const newNumber = `FAC-${String(lastNumber + 1).padStart(6, '0')}`;
-      const controlNumber = `DIG-${new Date().getFullYear()}${String(lastNumber + 1).padStart(6, '0')}`;
+      // Use direct REST API to avoid supabase-js headers issues
+      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
 
-      const { data, error } = await supabase
-        .from('invoices')
-        .insert([{
-          numero: newNumber,
-          numero_control: controlNumber,
-          fecha: invoice.fecha,
-          emisor_nombre: invoice.emisor.nombre,
-          emisor_rif: invoice.emisor.rif,
-          emisor_domicilio: invoice.emisor.domicilio,
-          customer_id: invoice.receptor.id,
-          receptor_rif: invoice.receptor.rif,
-          receptor_razon_social: invoice.receptor.razonSocial,
-          receptor_domicilio: invoice.receptor.domicilio,
-          receptor_tipo_contribuyente: invoice.receptor.tipoContribuyente,
-          lineas: invoice.lineas,
-          pagos: invoice.pagos,
-          subtotal: invoice.subtotal,
-          monto_iva: invoice.montoIva,
-          monto_igtf: invoice.montoIgtf,
-          total: invoice.total,
-          total_usd_referencia: invoice.totalUsdReferencia,
-          tasa_bcv: invoice.tasaBcv,
-          fecha_tasa_bcv: invoice.fechaTasaBcv,
-          canal: invoice.canal,
-          estado: invoice.estado,
-          factura_afectada_id: invoice.facturaAfectadaId,
-          factura_afectada_numero: invoice.facturaAfectadaNumero,
-          tipo_nota: invoice.tipoNota,
-          motivo_nota: invoice.motivoNota,
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return {
-        id: data.id,
-        numero: data.numero,
-        numeroControl: data.numero_control,
-        fecha: data.fecha,
-        emisor: {
-          nombre: data.emisor_nombre,
-          rif: data.emisor_rif,
-          domicilio: data.emisor_domicilio,
-        },
-        receptor: {
-          id: data.customer_id,
-          rif: data.receptor_rif,
-          razonSocial: data.receptor_razon_social,
-          domicilio: data.receptor_domicilio,
-          tipoContribuyente: data.receptor_tipo_contribuyente,
-        },
-        lineas: data.lineas,
-        pagos: data.pagos,
-        subtotal: parseFloat(data.subtotal),
-        montoIva: parseFloat(data.monto_iva),
-        montoIgtf: parseFloat(data.monto_igtf),
-        total: parseFloat(data.total),
-        totalUsdReferencia: parseFloat(data.total_usd_referencia),
-        tasaBcv: parseFloat(data.tasa_bcv),
-        fechaTasaBcv: data.fecha_tasa_bcv,
-        canal: data.canal,
-        estado: data.estado,
-      };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    },
-  });
-};
+      // Generate invoice number - get last invoice number
+      const lastInvoiceResponse = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=numero&order=created_at.desc&limit=1`, {\n        method: 'GET',\n        headers: {\n          'Content-Type': 'application/json',\n          'apikey': SUPABASE_ANON_KEY,\n          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,\n        }\n      });\n\n      let lastNumber = 0;\n      if (lastInvoiceResponse.ok) {\n        const lastInvoiceData = await lastInvoiceResponse.json();\n        if (Array.isArray(lastInvoiceData) && lastInvoiceData.length > 0) {\n          const lastInvoice = lastInvoiceData[0];\n          lastNumber = lastInvoice ? parseInt(lastInvoice.numero.split('-')[1]) : 0;\n        }\n      }\n\n      const newNumber = `FAC-${String(lastNumber + 1).padStart(6, '0')}`;\n      const controlNumber = `DIG-${new Date().getFullYear()}${String(lastNumber + 1).padStart(6, '0')}`;\n\n      console.log('Generated invoice numbers:', { newNumber, controlNumber });\n\n      const insertData = {\n        numero: newNumber,\n        numero_control: controlNumber,\n        fecha: invoice.fecha,\n        emisor_nombre: invoice.emisor.nombre,\n        emisor_rif: invoice.emisor.rif,\n        emisor_domicilio: invoice.emisor.domicilio,\n        customer_id: invoice.receptor.id,\n        receptor_rif: invoice.receptor.rif,\n        receptor_razon_social: invoice.receptor.razonSocial,\n        receptor_domicilio: invoice.receptor.domicilio,\n        receptor_tipo_contribuyente: invoice.receptor.tipoContribuyente,\n        lineas: invoice.lineas,\n        pagos: invoice.pagos,\n        subtotal: invoice.subtotal,\n        monto_iva: invoice.montoIva,\n        monto_igtf: invoice.montoIgtf,\n        total: invoice.total,\n        total_usd_referencia: invoice.totalUsdReferencia,\n        tasa_bcv: invoice.tasaBcv,\n        fecha_tasa_bcv: invoice.fechaTasaBcv,\n        canal: invoice.canal,\n        estado: invoice.estado,\n        factura_afectada_id: invoice.facturaAfectadaId,\n        factura_afectada_numero: invoice.facturaAfectadaNumero,\n        tipo_nota: invoice.tipoNota,\n        motivo_nota: invoice.motivoNota,\n      };\n\n      const response = await fetch(`${SUPABASE_URL}/rest/v1/invoices`, {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'apikey': SUPABASE_ANON_KEY,\n          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,\n          'Prefer': 'return=representation'\n        },\n        body: JSON.stringify(insertData)\n      });\n\n      console.log('Create invoice response status:', response.status);\n\n      if (!response.ok) {\n        const errorText = await response.text();\n        console.error('REST API error creating invoice:', errorText);\n        throw new Error(`Error ${response.status}: ${errorText}`);\n      }\n\n      const data = await response.json();\n      console.log('Invoice created via REST API:', data);\n\n      if (!data || !Array.isArray(data) || data.length === 0) {\n        throw new Error('No se recibieron datos del servidor');\n      }\n\n      const createdInvoice = data[0];\n\n      return {\n        id: createdInvoice.id,\n        numero: createdInvoice.numero,\n        numeroControl: createdInvoice.numero_control,\n        fecha: createdInvoice.fecha,\n        emisor: {\n          nombre: createdInvoice.emisor_nombre,\n          rif: createdInvoice.emisor_rif,\n          domicilio: createdInvoice.emisor_domicilio,\n        },\n        receptor: {\n          id: createdInvoice.customer_id,\n          rif: createdInvoice.receptor_rif,\n          razonSocial: createdInvoice.receptor_razon_social,\n          domicilio: createdInvoice.receptor_domicilio,\n          tipoContribuyente: createdInvoice.receptor_tipo_contribuyente,\n        },\n        lineas: createdInvoice.lineas,\n        pagos: createdInvoice.pagos,\n        subtotal: parseFloat(createdInvoice.subtotal),\n        montoIva: parseFloat(createdInvoice.monto_iva),\n        montoIgtf: parseFloat(createdInvoice.monto_igtf),\n        total: parseFloat(createdInvoice.total),\n        totalUsdReferencia: parseFloat(createdInvoice.total_usd_referencia),\n        tasaBcv: parseFloat(createdInvoice.tasa_bcv),\n        fechaTasaBcv: createdInvoice.fecha_tasa_bcv,\n        canal: createdInvoice.canal,\n        estado: createdInvoice.estado,\n        createdAt: createdInvoice.created_at,\n        updatedAt: createdInvoice.updated_at,\n      };\n    },\n    onSuccess: () => {\n      queryClient.invalidateQueries({ queryKey: ['invoices'] });\n    },\n  });\n};
 
 export const useVoidInvoice = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }): Promise<void> => {
-      const { error } = await supabase
-        .from('invoices')
-        .update({
-          estado: 'nota_credito',
-          motivo_nota: reason
-        })
-        .eq('id', id);
+      console.log('Voiding invoice via REST API:', { id, reason });
 
-      if (error) throw error;
+      // Use direct REST API to avoid supabase-js headers issues
+      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
+
+      const updateData = {
+        estado: 'nota_credito',
+        motivo_nota: reason
+      };
+
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      console.log('Void invoice response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('REST API error voiding invoice:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      console.log('Invoice voided successfully via REST API');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
