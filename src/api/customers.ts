@@ -196,32 +196,89 @@ export const useUpdateCustomer = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...customer }: Customer): Promise<Customer> => {
-      const { data, error } = await supabase
-        .from('customers')
-        .update({
-          rif: customer.rif,
-          razon_social: customer.razonSocial,
-          nombre: customer.nombre,
-          domicilio: customer.domicilio,
-          telefono: customer.telefono,
-          email: customer.email,
-          tipo_contribuyente: customer.tipoContribuyente,
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      console.log('Updating customer via REST API:', { id, ...customer });
 
-      if (error) throw error;
+      // Use direct REST API to avoid supabase-js headers issues
+      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
+
+      // Normalize all data to prevent undefined/null header issues
+      const updateData = {
+        rif: normalizeString(customer.rif)?.toUpperCase() || '',
+        razon_social: normalizeString(customer.razonSocial) || '',
+        nombre: normalizeString(customer.nombre),
+        domicilio: normalizeString(customer.domicilio) || '',
+        telefono: normalizeString(customer.telefono),
+        email: normalizeString(customer.email),
+        tipo_contribuyente: customer.tipoContribuyente || 'ordinario',
+      };
+
+      // Validate required fields
+      if (!updateData.rif) {
+        throw new Error('RIF es requerido');
+      }
+      if (!updateData.razon_social) {
+        throw new Error('Razón social es requerida');
+      }
+      if (!updateData.domicilio) {
+        throw new Error('Domicilio es requerido');
+      }
+
+      console.log('Normalized update data:', updateData);
+
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      console.log('Update customer response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('REST API error updating customer:', errorText);
+
+        // Handle specific HTTP/REST errors
+        if (response.status === 409 || errorText.includes('duplicate')) {
+          throw new Error(`Ya existe un cliente con el RIF: ${updateData.rif}`);
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Error de permisos. Verifica la configuración de Supabase.');
+        }
+
+        if (response.status === 400) {
+          throw new Error('Datos inválidos. Verifica que todos los campos estén completos.');
+        }
+
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Customer updated via REST API:', data);
+
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        throw new Error('No se recibieron datos del servidor');
+      }
+
+      const updatedCustomer = data[0];
 
       return {
-        id: data.id,
-        rif: data.rif,
-        razonSocial: data.razon_social,
-        nombre: data.nombre,
-        domicilio: data.domicilio,
-        telefono: data.telefono,
-        email: data.email,
-        tipoContribuyente: data.tipo_contribuyente,
+        id: updatedCustomer.id,
+        rif: updatedCustomer.rif,
+        razonSocial: updatedCustomer.razon_social,
+        nombre: updatedCustomer.nombre,
+        domicilio: updatedCustomer.domicilio,
+        telefono: updatedCustomer.telefono,
+        email: updatedCustomer.email,
+        tipoContribuyente: updatedCustomer.tipo_contribuyente,
+        createdAt: updatedCustomer.created_at,
+        updatedAt: updatedCustomer.updated_at,
       };
     },
     onSuccess: () => {
@@ -235,12 +292,30 @@ export const useDeleteCustomer = () => {
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .eq('id', id);
+      console.log('Deleting customer via REST API:', id);
 
-      if (error) throw error;
+      // Use direct REST API to avoid supabase-js headers issues
+      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
+
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      console.log('Delete customer response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('REST API error deleting customer:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      console.log('Customer deleted successfully via REST API');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
