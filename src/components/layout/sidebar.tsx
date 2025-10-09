@@ -69,7 +69,7 @@ export function Sidebar() {
                 ))}
               </ul>
             </li>
-            {user?.rol === 'admin' && (
+            {(user?.rol === 'admin' || user?.rol === 'superadmin') && (
               <li>
                 <div className="text-xs font-semibold leading-6 text-gray-400 dark:text-gray-500">
                   Administración
