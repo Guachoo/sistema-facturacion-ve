@@ -15,9 +15,9 @@ export const useLogin = () => {
         token: 'mock-jwt-token-' + Date.now(),
         user: {
           id: '1',
-          nombre: 'Usuario Demo',
+          nombre: 'Administrador Demo',
           email: credentials.email,
-          rol: 'admin'
+          rol: 'superadmin'
         }
       };
       tokenManager.set(mockResponse.token);

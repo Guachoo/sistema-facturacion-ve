@@ -22,9 +22,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // For now, we'll use a mock user
       setUser({
         id: '1',
-        nombre: 'Usuario Demo',
-        email: 'demo@empresa.com',
-        rol: 'admin'
+        nombre: 'Administrador Demo',
+        email: 'admin@sistema.com',
+        rol: 'superadmin'
       });
       setIsAuthenticated(true);
     }
