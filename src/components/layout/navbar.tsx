@@ -22,25 +22,33 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 import { KeyboardShortcutsHelp } from '@/lib/keyboard-shortcuts';
-import { 
-  Plus, 
-  Users, 
-  FileText, 
-  BarChart3, 
-  Settings, 
+import {
+  Plus,
+  Users,
+  FileText,
+  BarChart3,
+  Settings,
   LogOut,
   Sun,
   Moon,
   Bell,
-  HelpCircle
+  HelpCircle,
+  Menu,
+  X,
+  LayoutDashboard,
+  Package,
+  Users2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const { canRead } = usePermissions();
   const location = useLocation();
   const [darkMode, setDarkMode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -49,10 +57,40 @@ export function Navbar() {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const navigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null },
+    { name: 'Facturas', href: '/facturas', icon: FileText, permission: 'facturas' },
+    { name: 'Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
+    { name: 'Productos/Servicios', href: '/items', icon: Package, permission: 'items' },
+    { name: 'Reportes', href: '/reportes', icon: BarChart3, permission: 'reportes' },
+    { name: 'Configuración', href: '/configuracion', icon: Settings, permission: 'configuracion' },
+  ];
+
+  const adminNavigation = [
+    { name: 'Usuarios', href: '/usuarios', icon: Users2, permission: 'usuarios' },
+  ];
+
+  const filteredNavigation = navigation.filter(item =>
+    !item.permission || canRead(item.permission)
+  );
+
+  const filteredAdminNavigation = adminNavigation.filter(item =>
+    !item.permission || canRead(item.permission)
+  );
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2 md:gap-6">
+          {/* Mobile menu button */}
+          <Button
+            variant="ghost"
+            className="lg:hidden"
+            size="sm"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
           <Link to="/dashboard" className="flex items-center space-x-2">
             <div className="h-8 w-8 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg flex items-center justify-center">
               <FileText className="h-5 w-5 text-white" />
@@ -189,6 +227,77 @@ export function Navbar() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden">
+          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setMobileMenuOpen(false)} />
+          <div className="fixed inset-y-0 left-0 z-50 w-64 bg-background border-r shadow-lg">
+            <div className="flex h-16 items-center justify-between px-4 border-b">
+              <div className="flex items-center space-x-2">
+                <div className="h-8 w-8 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-lg font-bold">Axiona</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <nav className="flex-1 px-4 py-4">
+              <ul className="space-y-1">
+                {filteredNavigation.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      to={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        isActive(item.href)
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+                {filteredAdminNavigation.length > 0 && (
+                  <>
+                    <li>
+                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                        Administración
+                      </div>
+                    </li>
+                    {filteredAdminNavigation.map((item) => (
+                      <li key={item.name}>
+                        <Link
+                          to={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                            isActive(item.href)
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          )}
+                        >
+                          <item.icon className="h-5 w-5" />
+                          {item.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </>
+                )}
+              </ul>
+            </nav>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
