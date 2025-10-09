@@ -1,0 +1,209 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* Venezuelan formatting specific styles */
+.money-input input {
+  text-align: right;
+}
+
+/* Custom focus styles for accessibility */
+.focus\:ring-offset-2:focus {
+  --tw-ring-offset-width: 2px;
+}
+
+/* Print styles for invoices */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-after: always;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+  
+  .invoice-header {
+    border-bottom: 2px solid #000;
+    margin-bottom: 20pt;
+    padding-bottom: 10pt;
+  }
+  
+  .invoice-total {
+    border-top: 2px solid #000;
+    margin-top: 20pt;
+    padding-top: 10pt;
+    font-weight: bold;
+  }
+}
+
+/* Animation for loading states */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgb(243 244 246);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(156 163 175);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128);
+}
+
+@layer base {
+  :root {
+    --background: 220 13% 91%;
+    --foreground: 222 47% 11%;
+    --card: 215 20% 85%;
+    --card-foreground: 222 47% 11%;
+    --popover: 215 20% 85%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 142 76% 36%;
+    --radius: 0.75rem;
+
+    --success: 142 76% 36%;
+    --info: 217 91% 60%;
+    --warning: 38 92% 50%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 142 76% 36%;
+
+    --success: 142 76% 36%;
+    --info: 217 91% 60%;
+    --warning: 38 92% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Venezuelan specific number formatting */
+.number-ve {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Invoice specific styles */
+.invoice-layout {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.invoice-header {
+  @apply border-b-2 border-gray-800 pb-6 mb-6;
+}
+
+.invoice-details {
+  @apply grid grid-cols-2 gap-8 mb-6;
+}
+
+.invoice-table th {
+  @apply bg-gray-50 font-semibold text-left p-3 border-b;
+}
+
+.invoice-table td {
+  @apply p-3 border-b border-gray-200;
+}
+
+.invoice-totals {
+  @apply border-t-2 border-gray-800 pt-4 mt-6;
+}
+
+/* Keyboard shortcuts hint */
+.kbd {
+  @apply inline-flex items-center px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono text-gray-800;
+}
+
+.dark .kbd {
+  @apply bg-gray-800 border-gray-600 text-gray-200;
+}
