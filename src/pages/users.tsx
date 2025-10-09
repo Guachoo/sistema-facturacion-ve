@@ -455,11 +455,11 @@ const UsersPage: React.FC = () => {
           </Card>
 
           {/* Cards - Mobile */}
-          <div className="md:hidden space-y-4">
+          <div className="md:hidden space-y-3">
             {users.map((user) => (
               <Card key={user.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="space-y-3 sm:space-y-4">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="space-y-2 sm:space-y-4">
                     {/* Header with user info and actions */}
                     <div className="flex items-start justify-between">
                       <div>

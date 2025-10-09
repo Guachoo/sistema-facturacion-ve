@@ -279,7 +279,7 @@ export function CustomersPage() {
 
       {/* Search */}
       <Card>
-        <CardContent className="p-4 sm:p-6">
+        <CardContent className="p-3 sm:p-6">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -393,7 +393,7 @@ export function CustomersPage() {
       </Card>
 
       {/* Cards - Mobile */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-3">
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">
@@ -413,8 +413,8 @@ export function CustomersPage() {
         ) : (
           filteredCustomers.map((customer) => (
             <Card key={customer.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 sm:p-6">
-                <div className="space-y-3 sm:space-y-4">
+              <CardContent className="p-3 sm:p-6">
+                <div className="space-y-2 sm:space-y-4">
                   {/* Header with RIF and actions */}
                   <div className="flex items-start justify-between">
                     <div>
@@ -447,7 +447,7 @@ export function CustomersPage() {
                   </div>
 
                   {/* Contact info */}
-                  <div className="space-y-2">
+                  <div className="space-y-1 sm:space-y-2">
                     <div className="text-sm">
                       <div className="font-medium">Domicilio:</div>
                       <div className="text-muted-foreground">{customer.domicilio}</div>

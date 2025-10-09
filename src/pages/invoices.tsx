@@ -347,7 +347,7 @@ export function InvoicesPage() {
       </Card>
 
       {/* Cards - Mobile */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-3">
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">
@@ -367,8 +367,8 @@ export function InvoicesPage() {
         ) : (
           filteredInvoices.map((invoice) => (
             <Card key={invoice.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 sm:p-6">
-                <div className="space-y-3 sm:space-y-4">
+              <CardContent className="p-3 sm:p-6">
+                <div className="space-y-2 sm:space-y-4">
                   {/* Header with number and actions */}
                   <div className="flex items-start justify-between">
                     <div>
