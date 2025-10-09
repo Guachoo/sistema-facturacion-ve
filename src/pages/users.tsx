@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Shield, Eye, Settings, Users as UsersIcon, History } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, Settings, Users as UsersIcon, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUpdateUserPermissions, usePermissionAudit, type User, type CreateUserData, type UpdateUserData } from '@/api/users';
-import { usePermissions, getRoleDisplayName, getDefaultPermissionsForRole, type ModuleType } from '@/hooks/use-permissions';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useUserPermissions, useUpdateUserPermissions, usePermissionAudit, type User, type CreateUserData, type UpdateUserData } from '@/api/users';
+import { usePermissions, getRoleDisplayName, type ModuleType } from '@/hooks/use-permissions';
 import { withPermission } from '@/hooks/use-permissions';
 
 // Permission Toggle Component
@@ -104,7 +103,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSubmit, onCancel, isLoading
 
     if (user) {
       // Update - exclude email
-      const { email, ...updateData } = formData;
+      const { email: _, ...updateData } = formData;
       onSubmit(updateData);
     } else {
       // Create
@@ -298,7 +297,7 @@ const UsersPage: React.FC = () => {
       await createUserMutation.mutateAsync(data);
       toast.success('Usuario creado correctamente');
       setIsCreateDialogOpen(false);
-    } catch (error) {
+    } catch {
       toast.error('Error al crear usuario');
     }
   };
@@ -310,7 +309,7 @@ const UsersPage: React.FC = () => {
       await updateUserMutation.mutateAsync({ id: editingUser.id, data });
       toast.success('Usuario actualizado correctamente');
       setEditingUser(null);
-    } catch (error) {
+    } catch {
       toast.error('Error al actualizar usuario');
     }
   };
@@ -323,7 +322,7 @@ const UsersPage: React.FC = () => {
     try {
       await deleteUserMutation.mutateAsync(user.id);
       toast.success('Usuario eliminado correctamente');
-    } catch (error) {
+    } catch {
       toast.error('Error al eliminar usuario');
     }
   };

@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api-client';
 
 // Types
 export interface User {
@@ -29,7 +28,7 @@ export interface PermissionAudit {
   changed_by?: string;
   modulo?: string;
   accion: string;
-  detalles: Record<string, any>;
+  detalles: Record<string, unknown>;
   timestamp: string;
 }
 
