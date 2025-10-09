@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '@/api/customers';
 import { RifInput } from '@/components/ui/rif-input';
+import { usePermissions } from '@/hooks/use-permissions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { validateRIF } from '@/lib/formatters';
 import { toast } from 'sonner';
@@ -53,6 +54,7 @@ export function CustomersPage() {
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
 
   const { data: customers = [], isLoading } = useCustomers();
+  const { canWrite, canDelete } = usePermissions();
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer();
   const deleteMutation = useDeleteCustomer();
@@ -153,12 +155,14 @@ export function CustomersPage() {
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Cliente
-            </Button>
-          </DialogTrigger>
+          {canWrite('clientes') && (
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Cliente
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>
@@ -360,20 +364,24 @@ export function CustomersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(customer)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(customer.id!)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canWrite('clientes') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(customer)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete('clientes') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(customer.id!)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -395,4 +403,26 @@ export function CustomersPage() {
       />
     </div>
   );
+}
+
+// Export with permission protection
+export default function ProtectedCustomersPage() {
+  const { canRead } = usePermissions();
+
+  if (!canRead('clientes')) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="text-xl font-medium text-muted-foreground">
+            Acceso Restringido
+          </div>
+          <div className="text-sm text-muted-foreground">
+            No tienes permisos para acceder al módulo de clientes
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <CustomersPage />;
 }

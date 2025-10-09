@@ -8,7 +8,7 @@ import { PermissionsProvider } from '@/hooks/use-permissions';
 import { Layout } from '@/components/layout/layout';
 import { LoginPage } from '@/pages/login';
 import { DashboardPage } from '@/pages/dashboard';
-import { CustomersPage } from '@/pages/customers';
+import ProtectedCustomersPage from '@/pages/customers';
 import { ItemsPage } from '@/pages/items';
 import { InvoicesPage } from '@/pages/invoices';
 import { InvoiceWizardPage } from '@/pages/invoice-wizard';
@@ -64,7 +64,7 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="clientes" element={<CustomersPage />} />
+        <Route path="clientes" element={<ProtectedCustomersPage />} />
         <Route path="items" element={<ItemsPage />} />
         <Route path="facturas" element={<InvoicesPage />} />
         <Route path="facturas/nueva" element={<InvoiceWizardPage />} />
