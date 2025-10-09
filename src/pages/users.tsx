@@ -290,7 +290,12 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
 
 // Main Users Page Component
 const UsersPage: React.FC = () => {
-  const { data: users = [], isLoading } = useUsers();
+  const { data: users = [], isLoading, error } = useUsers();
+
+  // Debug para ver qué datos llegan
+  React.useEffect(() => {
+    console.log('Debug UsersPage:', { users, isLoading, error });
+  }, [users, isLoading, error]);
   const { data: auditLog = [] } = usePermissionAudit();
   const { canWrite, canDelete } = usePermissions();
 

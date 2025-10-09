@@ -324,7 +324,7 @@ INSERT INTO users (email, nombre, rol, activo)
 VALUES
   ('admin@sistema.com', 'Administrador General', 'superadmin', true),
   ('contador@sistema.com', 'Contador Principal', 'contador', true),
-  ('vendedor@sistema.com', 'Vendedor Demo', 'vendedor', true);
+  ('vendedor@sistema.com', 'Vendedor', 'vendedor', true);
 
 -- Permisos completos para el superadmin
 INSERT INTO user_permissions (user_id, modulo, puede_leer, puede_escribir, puede_eliminar)

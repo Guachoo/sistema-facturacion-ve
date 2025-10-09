@@ -18,14 +18,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const token = tokenManager.get();
     if (token) {
-      // In a real app, you'd decode the token or fetch user data
-      // For now, we'll use a mock user
-      setUser({
-        id: '1',
-        nombre: 'Administrador Demo',
-        email: 'admin@sistema.com',
-        rol: 'superadmin'
-      });
+      // En una app real, decodificarías el token para obtener los datos del usuario
+      // Por ahora, verificamos si hay una sesión válida pero sin usuario específico
       setIsAuthenticated(true);
     }
   }, []);
