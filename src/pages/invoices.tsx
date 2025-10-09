@@ -223,8 +223,8 @@ export function InvoicesPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
+      {/* Table - Desktop */}
+      <Card className="hidden md:block">
         <CardContent className="overflow-x-auto">
           <Table className="min-w-[800px]">
             <TableHeader>
@@ -345,6 +345,91 @@ export function InvoicesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Cards - Mobile */}
+      <div className="md:hidden space-y-4">
+        {isLoading ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                Cargando facturas...
+              </div>
+            </CardContent>
+          </Card>
+        ) : filteredInvoices.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                No se encontraron facturas
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredInvoices.map((invoice) => (
+            <Card key={invoice.id}>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {/* Header with number and actions */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-mono font-medium">{invoice.numero}</div>
+                      <div className="text-xs text-muted-foreground">{invoice.numeroControl}</div>
+                      <div className="text-sm text-muted-foreground">{formatDateVE(invoice.fecha)}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePreview(invoice)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownloadPDF(invoice)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Client info */}
+                  <div className="space-y-2">
+                    <div className="text-sm">
+                      <div className="font-medium">Cliente:</div>
+                      <div className="text-muted-foreground">{invoice.receptor.razonSocial}</div>
+                      <div className="font-mono text-xs text-muted-foreground">{invoice.receptor.rif}</div>
+                    </div>
+                  </div>
+
+                  {/* Totals and status */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm">
+                      <div className="font-mono font-bold">{formatVES(invoice.total)}</div>
+                      <div className="font-mono text-muted-foreground">{formatUSD(invoice.totalUsd)}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge
+                        variant={
+                          invoice.status === 'active' ? 'default' :
+                          invoice.status === 'voided' ? 'destructive' : 'secondary'
+                        }
+                      >
+                        {invoice.status === 'active' ? 'Activa' :
+                         invoice.status === 'voided' ? 'Anulada' : 'Borrador'}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {invoice.channel === 'digital' ? 'Digital' : 'Fiscal'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

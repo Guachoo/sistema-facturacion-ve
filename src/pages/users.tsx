@@ -353,15 +353,15 @@ const UsersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Gestión de Usuarios</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold">Gestión de Usuarios</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Administra usuarios y sus permisos de acceso al sistema
           </p>
         </div>
         {canWrite('usuarios') && (
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Usuario
           </Button>
@@ -369,7 +369,7 @@ const UsersPage: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="users">
             <UsersIcon className="mr-2 h-4 w-4" />
             Usuarios
@@ -381,7 +381,7 @@ const UsersPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="users">
-          <Card>
+          <Card className="hidden md:block">
             <CardHeader>
               <CardTitle>Lista de Usuarios</CardTitle>
               <CardDescription>
@@ -453,6 +453,72 @@ const UsersPage: React.FC = () => {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Cards - Mobile */}
+          <div className="md:hidden space-y-4">
+            {users.map((user) => (
+              <Card key={user.id}>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {/* Header with user info and actions */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-medium">{user.nombre}</div>
+                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleManagePermissions(user)}
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditUser(user)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {canDelete('usuarios') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Rol:</span>
+                        <Badge variant={user.rol === 'superadmin' ? 'default' : 'secondary'}>
+                          {getRoleDisplayName(user.rol)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Estado:</span>
+                        <Badge variant={user.activo ? 'default' : 'destructive'}>
+                          {user.activo ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Último Acceso:</span>
+                        <span className="text-sm text-muted-foreground">
+                          {user.ultimo_acceso ? new Date(user.ultimo_acceso).toLocaleDateString() : 'Nunca'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
 
         <TabsContent value="audit">

@@ -147,23 +147,23 @@ export function CustomersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Clientes</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Gestiona tu base de datos de clientes
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           {canWrite('clientes') && (
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Cliente
               </Button>
             </DialogTrigger>
           )}
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}
@@ -173,7 +173,7 @@ export function CustomersPage() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="rif">RIF *</Label>
                   <RifInput
@@ -294,8 +294,8 @@ export function CustomersPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
+      {/* Table - Desktop */}
+      <Card className="hidden md:block">
         <CardContent>
           <Table>
             <TableHeader>
@@ -391,6 +391,103 @@ export function CustomersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Cards - Mobile */}
+      <div className="md:hidden space-y-4">
+        {isLoading ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                Cargando clientes...
+              </div>
+            </CardContent>
+          </Card>
+        ) : filteredCustomers.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                No se encontraron clientes
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredCustomers.map((customer) => (
+            <Card key={customer.id}>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {/* Header with RIF and actions */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-mono text-sm font-medium">{customer.rif}</div>
+                      <div className="font-semibold">{customer.razonSocial}</div>
+                      {customer.nombre && (
+                        <div className="text-sm text-muted-foreground">{customer.nombre}</div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {canWrite('clientes') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(customer)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete('clientes') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(customer.id!)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Contact info */}
+                  <div className="space-y-2">
+                    <div className="text-sm">
+                      <div className="font-medium">Domicilio:</div>
+                      <div className="text-muted-foreground">{customer.domicilio}</div>
+                    </div>
+                    {(customer.telefono || customer.email) && (
+                      <div className="text-sm">
+                        <div className="font-medium">Contacto:</div>
+                        <div className="space-y-1">
+                          {customer.telefono && (
+                            <div className="text-muted-foreground">{customer.telefono}</div>
+                          )}
+                          {customer.email && (
+                            <div className="text-muted-foreground">{customer.email}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Badges */}
+                  {(customer.esContribuyenteEspecial || customer.esAgenteRetencion) && (
+                    <div className="flex gap-2">
+                      {customer.esContribuyenteEspecial && (
+                        <Badge variant="secondary" className="text-xs">
+                          Contribuyente Especial
+                        </Badge>
+                      )}
+                      {customer.esAgenteRetencion && (
+                        <Badge variant="secondary" className="text-xs">
+                          Agente de Retención
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
       <ConfirmDialog
         open={deleteConfirmOpen}

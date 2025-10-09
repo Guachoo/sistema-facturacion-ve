@@ -158,17 +158,17 @@ export function CompanySettingsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Configuración de Empresa</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Configuración de Empresa</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Gestiona los datos de tu empresa y números de control
           </p>
         </div>
       </div>
 
       <Tabs defaultValue="company" className="space-y-6">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="company">Datos de Empresa</TabsTrigger>
           <TabsTrigger value="control-numbers">Números de Control</TabsTrigger>
         </TabsList>

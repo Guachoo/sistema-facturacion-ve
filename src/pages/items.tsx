@@ -175,21 +175,21 @@ export function ItemsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Productos y Servicios</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Productos y Servicios</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Gestiona tu catálogo de productos y servicios
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={handleExportCSV} className="w-full sm:w-auto">
             <Download className="mr-2 h-4 w-4" />
             Exportar CSV
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Item
               </Button>
@@ -352,8 +352,8 @@ export function ItemsPage() {
         </Card>
       </div>
 
-      {/* Table */}
-      <Card>
+      {/* Table - Desktop */}
+      <Card className="hidden md:block">
         <CardContent>
           <Table>
             <TableHeader>
@@ -428,6 +428,79 @@ export function ItemsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Cards - Mobile */}
+      <div className="md:hidden space-y-4">
+        {isLoading ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                Cargando productos y servicios...
+              </div>
+            </CardContent>
+          </Card>
+        ) : filteredItems.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                No se encontraron productos o servicios
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredItems.map((item) => (
+            <Card key={item.id}>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {/* Header with code and actions */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-mono text-sm font-medium">{item.codigo}</div>
+                      <div className="font-semibold">{item.descripcion}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(item.id!)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Tipo:</span>
+                      <Badge variant={item.tipo === 'producto' ? 'default' : 'secondary'}>
+                        {item.tipo === 'producto' ? 'Producto' : 'Servicio'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Precio Base:</span>
+                      <span className="font-mono font-bold">{formatVES(item.precioBase)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">IVA:</span>
+                      <Badge variant={item.ivaAplica ? 'default' : 'secondary'}>
+                        {item.ivaAplica ? 'Aplica' : 'Exento'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
       <ConfirmDialog
         open={deleteConfirmOpen}
