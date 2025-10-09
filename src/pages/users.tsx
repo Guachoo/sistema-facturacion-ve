@@ -83,14 +83,25 @@ const PermissionToggle: React.FC<PermissionToggleProps> = ({
 };
 
 // User Form Component
-interface UserFormProps {
-  user?: User;
-  onSubmit: (data: CreateUserData | UpdateUserData) => void;
+interface CreateUserFormProps {
+  onSubmit: (data: CreateUserData) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ user, onSubmit, onCancel, isLoading = false }) => {
+interface EditUserFormProps {
+  user: User;
+  onSubmit: (data: UpdateUserData) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+}
+
+type UserFormProps = CreateUserFormProps | EditUserFormProps;
+
+const UserForm: React.FC<UserFormProps> = (props) => {
+  const { onCancel, isLoading = false } = props;
+  const user = 'user' in props ? props.user : undefined;
+
   const [formData, setFormData] = useState({
     email: user?.email || '',
     nombre: user?.nombre || '',
@@ -101,13 +112,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSubmit, onCancel, isLoading
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (user) {
+    if (user && 'user' in props) {
       // Update - exclude email
       const { email: _, ...updateData } = formData;
-      onSubmit(updateData);
-    } else {
+      props.onSubmit(updateData);
+    } else if ('onSubmit' in props) {
       // Create
-      onSubmit(formData);
+      props.onSubmit(formData);
     }
   };
 
