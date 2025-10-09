@@ -3,11 +3,59 @@
 -- =====================================================
 
 -- Eliminar tablas si existen (para poder recrear)
+DROP TABLE IF EXISTS permission_audit CASCADE;
+DROP TABLE IF EXISTS user_permissions CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS invoices CASCADE;
 DROP TABLE IF EXISTS items CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
 DROP TABLE IF EXISTS company_settings CASCADE;
 DROP TABLE IF EXISTS control_number_batches CASCADE;
+
+-- =====================================================
+-- TABLA: USERS (USUARIOS DEL SISTEMA)
+-- =====================================================
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  nombre VARCHAR(255) NOT NULL,
+  rol VARCHAR(50) NOT NULL CHECK (rol IN ('superadmin', 'admin', 'contador', 'vendedor', 'supervisor', 'auditor')),
+  activo BOOLEAN DEFAULT true,
+  ultimo_acceso TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =====================================================
+-- TABLA: USER_PERMISSIONS (PERMISOS POR MÓDULO)
+-- =====================================================
+CREATE TABLE user_permissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  modulo VARCHAR(50) NOT NULL CHECK (modulo IN ('clientes', 'items', 'facturas', 'reportes', 'configuracion', 'usuarios')),
+  puede_leer BOOLEAN DEFAULT false,
+  puede_escribir BOOLEAN DEFAULT false,
+  puede_eliminar BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, modulo)
+);
+
+-- =====================================================
+-- TABLA: PERMISSION_AUDIT (AUDITORÍA DE CAMBIOS)
+-- =====================================================
+CREATE TABLE permission_audit (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  target_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  changed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  modulo VARCHAR(50),
+  accion VARCHAR(200) NOT NULL,
+  detalles JSONB DEFAULT '{}'::jsonb,
+  ip_address INET,
+  user_agent TEXT,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- =====================================================
 -- TABLA: CUSTOMERS (CLIENTES)
@@ -124,6 +172,20 @@ CREATE TABLE control_number_batches (
 -- =====================================================
 -- ÍNDICES PARA PERFORMANCE
 -- =====================================================
+-- Índices para usuarios y permisos
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_rol ON users(rol);
+CREATE INDEX idx_users_activo ON users(activo);
+CREATE INDEX idx_users_created ON users(created_at DESC);
+
+CREATE INDEX idx_user_permissions_user_id ON user_permissions(user_id);
+CREATE INDEX idx_user_permissions_modulo ON user_permissions(modulo);
+
+CREATE INDEX idx_permission_audit_user_id ON permission_audit(user_id);
+CREATE INDEX idx_permission_audit_timestamp ON permission_audit(timestamp DESC);
+CREATE INDEX idx_permission_audit_changed_by ON permission_audit(changed_by);
+
+-- Índices existentes
 CREATE INDEX idx_customers_rif ON customers(rif);
 CREATE INDEX idx_customers_created ON customers(created_at DESC);
 
@@ -152,6 +214,14 @@ $$ language 'plpgsql';
 -- =====================================================
 -- TRIGGERS PARA updated_at
 -- =====================================================
+CREATE TRIGGER update_users_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_permissions_updated_at
+BEFORE UPDATE ON user_permissions
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_customers_updated_at
 BEFORE UPDATE ON customers
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -175,6 +245,9 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 -- =====================================================
 -- HABILITAR ROW LEVEL SECURITY (RLS)
 -- =====================================================
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE permission_audit ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
@@ -185,6 +258,27 @@ ALTER TABLE control_number_batches ENABLE ROW LEVEL SECURITY;
 -- POLÍTICAS DE SEGURIDAD (RLS POLICIES)
 -- Modo desarrollo: Permitir todo acceso público
 -- =====================================================
+
+-- Políticas para USERS
+DROP POLICY IF EXISTS "Enable all for users" ON users;
+CREATE POLICY "Enable all for users"
+ON users FOR ALL
+USING (true)
+WITH CHECK (true);
+
+-- Políticas para USER_PERMISSIONS
+DROP POLICY IF EXISTS "Enable all for user_permissions" ON user_permissions;
+CREATE POLICY "Enable all for user_permissions"
+ON user_permissions FOR ALL
+USING (true)
+WITH CHECK (true);
+
+-- Políticas para PERMISSION_AUDIT
+DROP POLICY IF EXISTS "Enable all for permission_audit" ON permission_audit;
+CREATE POLICY "Enable all for permission_audit"
+ON permission_audit FOR ALL
+USING (true)
+WITH CHECK (true);
 
 -- Políticas para CUSTOMERS
 DROP POLICY IF EXISTS "Enable all for customers" ON customers;
@@ -225,6 +319,67 @@ WITH CHECK (true);
 -- DATOS INICIALES
 -- =====================================================
 
+-- Usuario administrador por defecto
+INSERT INTO users (email, nombre, rol, activo)
+VALUES
+  ('admin@sistema.com', 'Administrador General', 'superadmin', true),
+  ('contador@sistema.com', 'Contador Principal', 'contador', true),
+  ('vendedor@sistema.com', 'Vendedor Demo', 'vendedor', true);
+
+-- Permisos completos para el superadmin
+INSERT INTO user_permissions (user_id, modulo, puede_leer, puede_escribir, puede_eliminar)
+SELECT
+  u.id,
+  modulo,
+  true,
+  true,
+  true
+FROM users u, (VALUES
+  ('clientes'),
+  ('items'),
+  ('facturas'),
+  ('reportes'),
+  ('configuracion'),
+  ('usuarios')
+) AS modules(modulo)
+WHERE u.email = 'admin@sistema.com';
+
+-- Permisos básicos para contador
+INSERT INTO user_permissions (user_id, modulo, puede_leer, puede_escribir, puede_eliminar)
+SELECT
+  u.id,
+  modulo,
+  CASE WHEN modulo IN ('clientes', 'items', 'facturas', 'reportes') THEN true ELSE false END,
+  CASE WHEN modulo IN ('clientes', 'items', 'facturas') THEN true ELSE false END,
+  false
+FROM users u, (VALUES
+  ('clientes'),
+  ('items'),
+  ('facturas'),
+  ('reportes'),
+  ('configuracion'),
+  ('usuarios')
+) AS modules(modulo)
+WHERE u.email = 'contador@sistema.com';
+
+-- Permisos básicos para vendedor
+INSERT INTO user_permissions (user_id, modulo, puede_leer, puede_escribir, puede_eliminar)
+SELECT
+  u.id,
+  modulo,
+  CASE WHEN modulo IN ('clientes', 'items', 'facturas') THEN true ELSE false END,
+  CASE WHEN modulo IN ('clientes', 'items', 'facturas') THEN true ELSE false END,
+  false
+FROM users u, (VALUES
+  ('clientes'),
+  ('items'),
+  ('facturas'),
+  ('reportes'),
+  ('configuracion'),
+  ('usuarios')
+) AS modules(modulo)
+WHERE u.email = 'vendedor@sistema.com';
+
 -- Configuración de empresa por defecto
 INSERT INTO company_settings (razon_social, rif, domicilio_fiscal, telefonos, email, condiciones_venta)
 VALUES (
@@ -256,7 +411,11 @@ VALUES
 -- =====================================================
 -- Verificar que todo se creó correctamente
 SELECT
-  'customers' as tabla, count(*) as registros FROM customers
+  'users' as tabla, count(*) as registros FROM users
+UNION ALL
+SELECT 'user_permissions', count(*) FROM user_permissions
+UNION ALL
+SELECT 'customers', count(*) FROM customers
 UNION ALL
 SELECT 'items', count(*) FROM items
 UNION ALL

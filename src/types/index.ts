@@ -3,7 +3,7 @@ export interface User {
   id: string;
   nombre: string;
   email: string;
-  rol: 'vendedor' | 'admin' | 'auditor';
+  rol: 'superadmin' | 'admin' | 'contador' | 'vendedor' | 'supervisor' | 'auditor';
 }
 
 export interface AuthResponse {

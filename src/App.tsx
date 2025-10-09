@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { PermissionsProvider } from '@/hooks/use-permissions';
 import { Layout } from '@/components/layout/layout';
 import { LoginPage } from '@/pages/login';
 import { DashboardPage } from '@/pages/dashboard';
@@ -15,6 +16,7 @@ import { ReportsPage } from '@/pages/reports';
 import { SalesBookPage } from '@/pages/reports/sales-book';
 import { IgtfReportPage } from '@/pages/reports/igtf-report';
 import { CompanySettingsPage } from '@/pages/company-settings';
+import UsersPage from '@/pages/users';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -28,12 +30,16 @@ const queryClient = new QueryClient({
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
-  return <>{children}</>;
+
+  return (
+    <PermissionsProvider>
+      {children}
+    </PermissionsProvider>
+  );
 }
 
 function AppRoutes() {
@@ -66,6 +72,7 @@ function AppRoutes() {
         <Route path="reportes/libro-ventas" element={<SalesBookPage />} />
         <Route path="reportes/igtf" element={<IgtfReportPage />} />
         <Route path="configuracion/empresa" element={<CompanySettingsPage />} />
+        <Route path="usuarios" element={<UsersPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
