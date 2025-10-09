@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -86,9 +85,6 @@ export function LoginPage() {
               Iniciar Sesión
             </Button>
           </form>
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Demo: admin@demo.com / password</p>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -8,11 +8,11 @@ export const useKeyboardShortcuts = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only trigger if no input is focused and no modifiers except specified ones
       const activeElement = document.activeElement;
-      const isInputFocused = activeElement?.tagName === 'INPUT' || 
-                            activeElement?.tagName === 'TEXTAREA' || 
+      const isInputFocused = activeElement?.tagName === 'INPUT' ||
+                            activeElement?.tagName === 'TEXTAREA' ||
                             activeElement?.contentEditable === 'true';
 
-      if (isInputFocused) return;
+      if (isInputFocused || !event.key) return;
 
       // Nueva factura: N
       if (event.key.toLowerCase() === 'n' && !event.ctrlKey && !event.altKey && !event.shiftKey) {
