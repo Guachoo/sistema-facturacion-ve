@@ -163,7 +163,7 @@ export function CustomersPage() {
               </Button>
             </DialogTrigger>
           )}
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}
@@ -172,8 +172,8 @@ export function CustomersPage() {
                 {editingCustomer ? 'Modifica' : 'Completa'} la información del cliente.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-1 sm:px-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="rif">RIF *</Label>
                   <RifInput
@@ -279,8 +279,8 @@ export function CustomersPage() {
 
       {/* Search */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -412,9 +412,9 @@ export function CustomersPage() {
           </Card>
         ) : (
           filteredCustomers.map((customer) => (
-            <Card key={customer.id}>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
+            <Card key={customer.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
                   {/* Header with RIF and actions */}
                   <div className="flex items-start justify-between">
                     <div>

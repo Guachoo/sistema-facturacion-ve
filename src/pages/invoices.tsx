@@ -366,9 +366,9 @@ export function InvoicesPage() {
           </Card>
         ) : (
           filteredInvoices.map((invoice) => (
-            <Card key={invoice.id}>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
+            <Card key={invoice.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
                   {/* Header with number and actions */}
                   <div className="flex items-start justify-between">
                     <div>
@@ -433,7 +433,7 @@ export function InvoicesPage() {
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto mx-2 sm:mx-4 md:mx-auto w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] md:w-auto">
           <DialogHeader>
             <DialogTitle>Vista Previa de Factura</DialogTitle>
           </DialogHeader>

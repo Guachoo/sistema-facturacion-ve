@@ -194,7 +194,7 @@ export function ItemsPage() {
                 Nuevo Item
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingItem ? 'Editar Item' : 'Nuevo Item'}
@@ -203,8 +203,8 @@ export function ItemsPage() {
                   {editingItem ? 'Modifica' : 'Completa'} la información del producto o servicio.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-1 sm:px-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="codigo">Código *</Label>
                     <Input
@@ -449,9 +449,9 @@ export function ItemsPage() {
           </Card>
         ) : (
           filteredItems.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
+            <Card key={item.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
                   {/* Header with code and actions */}
                   <div className="flex items-start justify-between">
                     <div>

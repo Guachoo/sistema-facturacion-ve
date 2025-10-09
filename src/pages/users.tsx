@@ -41,13 +41,13 @@ const PermissionToggle: React.FC<PermissionToggleProps> = ({
   };
 
   return (
-    <div className="space-y-3 p-4 border rounded-lg">
+    <div className="space-y-3 p-3 sm:p-4 border rounded-lg">
       <div className="flex items-center space-x-2">
         <Shield className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{moduleDisplayNames[module]}</span>
+        <span className="font-medium text-sm sm:text-base">{moduleDisplayNames[module]}</span>
       </div>
 
-      <div className="space-y-2 pl-6">
+      <div className="space-y-3 pl-2 sm:pl-6">
         <div className="flex items-center justify-between">
           <Label htmlFor={`${module}-read`} className="text-sm">Leer</Label>
           <Switch
@@ -246,7 +246,7 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto mx-2 sm:mx-4 md:mx-auto w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] md:w-auto">
         <DialogHeader>
           <DialogTitle>Gestionar Permisos - {user.nombre}</DialogTitle>
           <DialogDescription>
@@ -262,7 +262,7 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
             </AlertDescription>
           </Alert>
 
-          <div className="grid gap-4">
+          <div className="grid gap-3 sm:gap-4 max-h-[50vh] overflow-y-auto">
             {modules.map(module => (
               <PermissionToggle
                 key={module}
@@ -274,11 +274,11 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
             ))}
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-4">
+            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={updatePermissionsMutation.isPending}>
+            <Button onClick={handleSave} disabled={updatePermissionsMutation.isPending} className="w-full sm:w-auto">
               {updatePermissionsMutation.isPending ? 'Guardando...' : 'Guardar Permisos'}
             </Button>
           </div>
@@ -457,9 +457,9 @@ const UsersPage: React.FC = () => {
           {/* Cards - Mobile */}
           <div className="md:hidden space-y-4">
             {users.map((user) => (
-              <Card key={user.id}>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
+              <Card key={user.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
                     {/* Header with user info and actions */}
                     <div className="flex items-start justify-between">
                       <div>
@@ -566,7 +566,7 @@ const UsersPage: React.FC = () => {
 
       {/* Create User Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-auto max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear Nuevo Usuario</DialogTitle>
             <DialogDescription>
@@ -583,7 +583,7 @@ const UsersPage: React.FC = () => {
 
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent>
+        <DialogContent className="mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-auto max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Usuario</DialogTitle>
             <DialogDescription>
