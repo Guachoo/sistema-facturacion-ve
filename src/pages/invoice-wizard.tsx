@@ -274,8 +274,8 @@ export function InvoiceWizardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Nueva Factura</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Nueva Factura</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Wizard de creación de factura digital
           </p>
         </div>

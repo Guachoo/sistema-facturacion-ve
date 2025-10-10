@@ -31,8 +31,31 @@ export interface Item {
   tipo: 'producto' | 'servicio';
   precioBase: number; // Always in VES
   ivaAplica: boolean;
+  // Inventory fields
+  stockActual?: number;
+  stockMinimo?: number;
+  stockMaximo?: number;
+  costoPromedio?: number;
+  ubicacion?: string;
+  categoria?: string;
+  activo?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface InventoryMovement {
+  id?: string;
+  itemId: string;
+  tipo: 'entrada' | 'salida' | 'ajuste' | 'merma';
+  cantidad: number;
+  costoUnitario?: number;
+  motivo: string;
+  referencia?: string; // invoice ID, purchase order, etc.
+  usuarioId: string;
+  fecha: string;
+  stockAnterior: number;
+  stockNuevo: number;
+  createdAt?: string;
 }
 
 export interface InvoiceLine {

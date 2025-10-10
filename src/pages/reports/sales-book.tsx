@@ -119,8 +119,8 @@ export function SalesBookPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Libro de Ventas</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Libro de Ventas</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Reporte fiscal mensual de ventas por canal
           </p>
         </div>

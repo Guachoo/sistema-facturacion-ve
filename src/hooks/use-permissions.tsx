@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useUserPermissions } from '@/api/users';
 
 // Types
-export type ModuleType = 'clientes' | 'items' | 'facturas' | 'reportes' | 'configuracion' | 'usuarios';
+export type ModuleType = 'clientes' | 'items' | 'cotizaciones' | 'facturas' | 'reportes' | 'configuracion' | 'usuarios';
 export type ActionType = 'leer' | 'escribir' | 'eliminar';
 
 interface PermissionsContextType {

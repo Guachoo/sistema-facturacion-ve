@@ -60,19 +60,17 @@ const reportCards = [
     title: 'Análisis de Ventas',
     description: 'Tendencias y patrones de facturación por período',
     icon: TrendingUp,
-    href: '#',
+    href: '/reportes/analisis-ventas',
     color: 'bg-green-500',
-    stats: 'Comparativo mensual',
-    disabled: true
+    stats: 'Comparativo mensual'
   },
   {
     title: 'Reporte de Clientes',
     description: 'Análisis de cartera y comportamiento de clientes',
     icon: Users,
-    href: '#',
+    href: '/reportes/analisis-clientes',
     color: 'bg-purple-500',
-    stats: 'Top 10 clientes',
-    disabled: true
+    stats: 'Top 10 clientes'
   }
 ];
 
@@ -128,7 +126,7 @@ export function ReportsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Facturas del Mes</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{totalFacturas}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{totalFacturas}</div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
                   {format(new Date(), 'MMMM yyyy', { locale: es })}
                 </p>
@@ -145,7 +143,7 @@ export function ReportsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Ventas Totales</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(totalVentasVES)}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{formatVES(totalVentasVES)}</div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
                   {formatUSD(totalVentasUSD)} USD ref.
                 </p>
@@ -162,7 +160,7 @@ export function ReportsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">IGTF Acumulado</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(totalIGTF)}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{formatVES(totalIGTF)}</div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
                   3% de transacciones USD
                 </p>
@@ -179,7 +177,7 @@ export function ReportsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Ticket Promedio</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(promedioFactura)}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{formatVES(promedioFactura)}</div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
                   Por factura emitida
                 </p>

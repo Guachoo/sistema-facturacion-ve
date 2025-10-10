@@ -160,8 +160,8 @@ export function CompanySettingsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Configuración de Empresa</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Configuración de Empresa</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Gestiona los datos de tu empresa y números de control
           </p>
         </div>

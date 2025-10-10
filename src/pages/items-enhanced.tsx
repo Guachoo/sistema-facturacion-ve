@@ -87,7 +87,7 @@ const movementSchema = z.object({
 type ItemForm = z.infer<typeof itemSchema>;
 type MovementForm = z.infer<typeof movementSchema>;
 
-export function ItemsPage() {
+export function EnhancedItemsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -996,4 +996,4 @@ export function ItemsPage() {
   );
 }
 
-export default ItemsPage;
+export default EnhancedItemsPage;

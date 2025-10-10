@@ -500,7 +500,7 @@ export default function ProtectedCustomersPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
-          <div className="text-xl font-medium text-muted-foreground">
+          <div className="text-lg font-medium text-muted-foreground">
             Acceso Restringido
           </div>
           <div className="text-sm text-muted-foreground">

@@ -34,6 +34,7 @@ const PermissionToggle: React.FC<PermissionToggleProps> = ({
   const moduleDisplayNames: Record<ModuleType, string> = {
     clientes: 'Clientes',
     items: 'Items',
+    cotizaciones: 'Cotizaciones',
     facturas: 'Facturas',
     reportes: 'Reportes',
     configuracion: 'Config',
@@ -224,7 +225,7 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
 
   const handleSave = async () => {
     try {
-      const modules: ModuleType[] = ['clientes', 'items', 'facturas', 'reportes', 'configuracion', 'usuarios'];
+      const modules: ModuleType[] = ['clientes', 'items', 'cotizaciones', 'facturas', 'reportes', 'configuracion', 'usuarios'];
 
       const permissionsToSave = modules.map(module => ({
         modulo: module,
@@ -245,7 +246,7 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
     }
   };
 
-  const modules: ModuleType[] = ['clientes', 'items', 'facturas', 'reportes', 'configuracion', 'usuarios'];
+  const modules: ModuleType[] = ['clientes', 'items', 'cotizaciones', 'facturas', 'reportes', 'configuracion', 'usuarios'];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -351,7 +352,7 @@ const UsersPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Gestión de Usuarios</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             Administra usuarios y sus permisos de acceso al sistema
           </p>
@@ -451,15 +452,15 @@ const UsersPage: React.FC = () => {
           </Card>
 
           {/* Cards - Mobile */}
-          <div className="md:hidden grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="md:hidden grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
             {users.map((user) => (
               <Card key={user.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-2 sm:p-3">
-                  <div className="space-y-1 sm:space-y-2">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="space-y-2 sm:space-y-3">
                     {/* Header compact */}
                     <div className="flex items-start justify-between">
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium truncate" title={user.nombre}>{user.nombre}</div>
+                        <div className="text-sm font-medium truncate" title={user.nombre}>{user.nombre}</div>
                         <div className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</div>
                       </div>
                       <div className="flex gap-1 ml-1">
@@ -495,27 +496,32 @@ const UsersPage: React.FC = () => {
                     </div>
 
                     {/* Role and status */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
                         <Badge
                           variant={user.rol === 'superadmin' ? 'default' : 'secondary'}
-                          className="text-xs px-1 py-0"
+                          className="text-xs px-2 py-1"
                         >
-                          {user.rol === 'superadmin' ? 'Super' :
-                           user.rol === 'admin' ? 'Admin' :
-                           user.rol === 'contador' ? 'Cont' :
-                           user.rol === 'vendedor' ? 'Vend' :
-                           user.rol === 'supervisor' ? 'Sup' : 'Aud'}
+                          {user.rol === 'superadmin' ? 'SuperAdmin' :
+                           user.rol === 'admin' ? 'Administrador' :
+                           user.rol === 'contador' ? 'Contador' :
+                           user.rol === 'vendedor' ? 'Vendedor' :
+                           user.rol === 'supervisor' ? 'Supervisor' : 'Auditor'}
                         </Badge>
                         <Badge
                           variant={user.activo ? 'default' : 'destructive'}
-                          className="text-xs px-1 py-0"
+                          className="text-xs px-2 py-1"
                         >
-                          {user.activo ? 'Act' : 'Inact'}
+                          {user.activo ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground text-center">
-                        {user.ultimo_acceso ? new Date(user.ultimo_acceso).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' }) : 'Nunca'}
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium">Último acceso: </span>
+                        {user.ultimo_acceso ? new Date(user.ultimo_acceso).toLocaleDateString('es-VE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit'
+                        }) : 'Nunca'}
                       </div>
                     </div>
                   </div>

@@ -11,6 +11,13 @@ const mockItems: Item[] = [
     tipo: 'servicio',
     precioBase: 50000, // VES
     ivaAplica: true,
+    stockActual: 95,
+    stockMinimo: 10,
+    stockMaximo: 200,
+    costoPromedio: 45000,
+    ubicacion: 'Oficina Principal',
+    categoria: 'Servicios',
+    activo: true,
   },
   {
     id: '2',
@@ -19,6 +26,28 @@ const mockItems: Item[] = [
     tipo: 'producto',
     precioBase: 150000, // VES
     ivaAplica: true,
+    stockActual: 50,
+    stockMinimo: 5,
+    stockMaximo: 100,
+    costoPromedio: 140000,
+    ubicacion: 'Almacén A',
+    categoria: 'Software',
+    activo: true,
+  },
+  {
+    id: '3',
+    codigo: 'PROD-002',
+    descripcion: 'Licencia Office',
+    tipo: 'producto',
+    precioBase: 80000,
+    ivaAplica: true,
+    stockActual: 3,
+    stockMinimo: 5,
+    stockMaximo: 50,
+    costoPromedio: 75000,
+    ubicacion: 'Digital',
+    categoria: 'Software',
+    activo: true,
   },
 ];
 

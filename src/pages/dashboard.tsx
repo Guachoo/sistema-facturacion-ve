@@ -71,7 +71,7 @@ export function DashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Ventas del Mes</div>
-                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">
                   {formatVES(kpis.totalVentasMes)}
                 </div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
@@ -90,7 +90,7 @@ export function DashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">% USD</div>
-                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">{kpis.porcentajeUSD}%</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{kpis.porcentajeUSD}%</div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
                   Del total
                 </p>
@@ -107,7 +107,7 @@ export function DashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">IGTF</div>
-                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">
                   {formatVES(kpis.igtfPeriodo)}
                 </div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
@@ -126,7 +126,7 @@ export function DashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Facturas</div>
-                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">{kpis.numeroFacturas}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{kpis.numeroFacturas}</div>
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">
                   Promedio: {formatVES(kpis.ticketPromedio)}
                 </p>

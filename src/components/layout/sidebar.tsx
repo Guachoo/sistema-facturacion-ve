@@ -7,12 +7,14 @@ import {
   Package,
   BarChart3,
   Settings,
-  Users2
+  Users2,
+  FileTextIcon
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Cotizaciones', href: '/cotizaciones', icon: FileTextIcon },
   { name: 'Facturas', href: '/facturas', icon: FileText },
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Productos/Servicios', href: '/items', icon: Package },

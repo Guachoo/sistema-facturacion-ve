@@ -35,11 +35,11 @@ import {
   Moon,
   Bell,
   HelpCircle,
-  Menu,
-  X,
   LayoutDashboard,
   Package,
-  Users2
+  Users2,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +48,7 @@ export function Navbar() {
   const { canRead } = usePermissions();
   const location = useLocation();
   const [darkMode, setDarkMode] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -59,6 +59,7 @@ export function Navbar() {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null },
+    { name: 'Cotizaciones', href: '/cotizaciones', icon: FileText, permission: 'cotizaciones' },
     { name: 'Facturas', href: '/facturas', icon: FileText, permission: 'facturas' },
     { name: 'Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
     { name: 'Productos/Servicios', href: '/items', icon: Package, permission: 'items' },
@@ -80,22 +81,22 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="container flex h-14 lg:h-16 items-center justify-between px-3 lg:px-4">
         <div className="flex items-center gap-2 md:gap-6">
           {/* Mobile menu button */}
           <Button
             variant="ghost"
-            className="lg:hidden"
-            size="sm"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden h-8 w-8 p-0"
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
           >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <Menu className="h-5 w-5" />
           </Button>
+
           <Link to="/dashboard" className="flex items-center space-x-2">
-            <div className="h-8 w-8 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg flex items-center justify-center">
-              <FileText className="h-5 w-5 text-white" />
+            <div className="h-7 w-7 lg:h-8 lg:w-8 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg flex items-center justify-center">
+              <FileText className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
             </div>
-            <span className="text-lg md:text-xl font-bold">Axiona</span>
+            <span className="text-base lg:text-lg xl:text-xl font-bold">Axiona</span>
           </Link>
 
           <NavigationMenu className="hidden md:block">
@@ -169,18 +170,18 @@ export function Navbar() {
           </NavigationMenu>
         </div>
 
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={toggleDarkMode}>
+        <div className="flex items-center gap-2 lg:gap-4">
+          <Button variant="ghost" size="sm" onClick={toggleDarkMode} className="h-8 w-8 lg:h-9 lg:w-9 p-0">
             {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="h-8 w-8 lg:h-9 lg:w-9 p-0">
             <Bell className="h-4 w-4" />
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="h-8 w-8 lg:h-9 lg:w-9 p-0">
                 <HelpCircle className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -193,10 +194,10 @@ export function Navbar() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" className="relative h-8 w-8 lg:h-9 lg:w-9 rounded-full p-0">
+                <Avatar className="h-7 w-7 lg:h-8 lg:w-8">
                   <AvatarImage src="/avatars/01.png" alt={user?.nombre} />
-                  <AvatarFallback>{user?.nombre?.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="text-xs lg:text-sm">{user?.nombre?.charAt(0)}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -228,12 +229,19 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Navigation Menu */}
-      {mobileMenuOpen && (
+      {/* Mobile Vertical Sidebar */}
+      {mobileSidebarOpen && (
         <div className="lg:hidden">
-          <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setMobileMenuOpen(false)} />
-          <div className="fixed inset-y-0 left-0 z-50 w-64 bg-background border-r shadow-lg">
-            <div className="flex h-16 items-center justify-between px-4 border-b">
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 z-40 bg-black/20 h-screen w-screen"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+
+          {/* Sidebar */}
+          <div className="fixed top-0 bottom-0 left-0 z-50 w-64 h-screen max-h-screen overflow-hidden bg-white dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 shadow-xl flex flex-col">
+            {/* Header with close button */}
+            <div className="flex h-14 sm:h-16 items-center justify-between px-4 border-b border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <div className="h-8 w-8 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
@@ -243,26 +251,49 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={() => setMobileSidebarOpen(false)}
+                className="h-8 w-8 p-0"
               >
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <nav className="flex-1 px-4 py-4">
+
+            {/* Profile Section */}
+            <div className="p-3 sm:p-4 border-b border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src="/avatars/01.png" alt={user?.nombre} />
+                  <AvatarFallback className="text-lg">{user?.nombre?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{user?.nombre || 'Administrador General'}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{user?.email || 'admin@sistema.com'}</p>
+                  <Badge variant="default" className="text-xs mt-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                    {user?.rol || 'superadmin'}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 overflow-y-auto px-4 py-4 bg-white dark:bg-gray-900 min-h-0 scrollbar-thin">
               <ul className="space-y-1">
                 {filteredNavigation.map((item) => (
                   <li key={item.name}>
                     <Link
                       to={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
+                      onClick={() => setMobileSidebarOpen(false)}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                         isActive(item.href)
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          ? "bg-emerald-600 text-white"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
                       )}
                     >
-                      <item.icon className="h-5 w-5" />
+                      <item.icon className={cn(
+                        "h-5 w-5",
+                        isActive(item.href) ? "text-white" : "text-gray-500 dark:text-gray-400"
+                      )} />
                       {item.name}
                     </Link>
                   </li>
@@ -270,7 +301,7 @@ export function Navbar() {
                 {filteredAdminNavigation.length > 0 && (
                   <>
                     <li>
-                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
                         Administración
                       </div>
                     </li>
@@ -278,15 +309,18 @@ export function Navbar() {
                       <li key={item.name}>
                         <Link
                           to={item.href}
-                          onClick={() => setMobileMenuOpen(false)}
+                          onClick={() => setMobileSidebarOpen(false)}
                           className={cn(
                             "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                             isActive(item.href)
-                              ? "bg-primary text-primary-foreground"
-                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                              ? "bg-emerald-600 text-white"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
                           )}
                         >
-                          <item.icon className="h-5 w-5" />
+                          <item.icon className={cn(
+                            "h-5 w-5",
+                            isActive(item.href) ? "text-white" : "text-gray-500 dark:text-gray-400"
+                          )} />
                           {item.name}
                         </Link>
                       </li>
@@ -295,6 +329,55 @@ export function Navbar() {
                 )}
               </ul>
             </nav>
+
+            {/* Settings and Logout Section */}
+            <div className="p-3 sm:p-4 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
+              {/* Dark Mode Toggle */}
+              <div className="flex items-center justify-between py-2 px-3 mb-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
+                <div className="flex items-center gap-3">
+                  {darkMode ? <Sun className="h-5 w-5 text-gray-700 dark:text-gray-300" /> : <Moon className="h-5 w-5 text-gray-700 dark:text-gray-300" />}
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Modo {darkMode ? 'Claro' : 'Oscuro'}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleDarkMode}
+                  className="h-6 w-10 p-0"
+                >
+                  <div className={cn(
+                    "w-8 h-4 bg-gray-200 rounded-full relative transition-colors",
+                    darkMode && "bg-primary"
+                  )}>
+                    <div className={cn(
+                      "w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform",
+                      darkMode ? "translate-x-4" : "translate-x-0.5"
+                    )} />
+                  </div>
+                </Button>
+              </div>
+
+              {/* Settings */}
+              <Link
+                to="/configuracion"
+                onClick={() => setMobileSidebarOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 mb-2"
+              >
+                <Settings className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                Configuración
+              </Link>
+
+              {/* Logout */}
+              <button
+                onClick={() => {
+                  logout();
+                  setMobileSidebarOpen(false);
+                }}
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950 w-full"
+              >
+                <LogOut className="h-5 w-5 text-red-500" />
+                Cerrar Sesión
+              </button>
+            </div>
           </div>
         </div>
       )}

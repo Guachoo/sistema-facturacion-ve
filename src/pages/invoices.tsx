@@ -107,7 +107,7 @@ export function InvoicesPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Total Facturas</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{invoices.length}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{invoices.length}</div>
               </div>
             </div>
           </CardContent>
@@ -121,7 +121,7 @@ export function InvoicesPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Emitidas</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{totalEmitidas}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{totalEmitidas}</div>
               </div>
             </div>
           </CardContent>
@@ -135,7 +135,7 @@ export function InvoicesPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Notas C/D</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{totalNotas}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{totalNotas}</div>
               </div>
             </div>
           </CardContent>
@@ -149,7 +149,7 @@ export function InvoicesPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-muted-foreground truncate">Ventas del Mes</div>
-                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(totalVentasMes)}</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold leading-tight">{formatVES(totalVentasMes)}</div>
               </div>
             </div>
           </CardContent>
