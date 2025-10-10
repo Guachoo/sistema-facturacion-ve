@@ -318,35 +318,49 @@ export function ItemsPage() {
       </Card>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{items.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Productos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {items.filter(item => item.tipo === 'producto').length}
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <Package className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Total Items</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{items.length}</div>
+              </div>
             </div>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Servicios</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {items.filter(item => item.tipo === 'servicio').length}
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <Package className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Productos</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">
+                  {items.filter(item => item.tipo === 'producto').length}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <Package className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Servicios</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">
+                  {items.filter(item => item.tipo === 'servicio').length}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -430,7 +444,7 @@ export function ItemsPage() {
       </Card>
 
       {/* Cards - Mobile */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden grid grid-cols-2 gap-2 sm:gap-3">
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">
@@ -450,49 +464,54 @@ export function ItemsPage() {
         ) : (
           filteredItems.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-3 sm:p-6">
-                <div className="space-y-2 sm:space-y-4">
-                  {/* Header with code and actions */}
+              <CardContent className="p-2 sm:p-3">
+                <div className="space-y-1 sm:space-y-2">
+                  {/* Header compact */}
                   <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-mono text-sm font-medium">{item.codigo}</div>
-                      <div className="font-semibold">{item.descripcion}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono text-xs font-medium truncate">{item.codigo}</div>
+                      <div className="text-xs font-semibold truncate" title={item.descripcion}>
+                        {item.descripcion}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 ml-1">
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-6 w-6 p-0"
                         onClick={() => handleEdit(item)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-3 w-3" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-6 w-6 p-0"
                         onClick={() => handleDelete(item.id!)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
 
-                  {/* Details */}
-                  <div className="space-y-2">
+                  {/* Type and price */}
+                  <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Tipo:</span>
-                      <Badge variant={item.tipo === 'producto' ? 'default' : 'secondary'}>
-                        {item.tipo === 'producto' ? 'Producto' : 'Servicio'}
+                      <Badge
+                        variant={item.tipo === 'producto' ? 'default' : 'secondary'}
+                        className="text-xs px-1 py-0"
+                      >
+                        {item.tipo === 'producto' ? 'Prod' : 'Serv'}
+                      </Badge>
+                      <Badge
+                        variant={item.ivaAplica ? 'default' : 'secondary'}
+                        className="text-xs px-1 py-0"
+                      >
+                        {item.ivaAplica ? 'IVA' : 'Exento'}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Precio Base:</span>
-                      <span className="font-mono font-bold">{formatVES(item.precioBase)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">IVA:</span>
-                      <Badge variant={item.ivaAplica ? 'default' : 'secondary'}>
-                        {item.ivaAplica ? 'Aplica' : 'Exento'}
-                      </Badge>
+                    <div className="text-xs font-mono font-bold text-center">
+                      {formatVES(item.precioBase)}
                     </div>
                   </div>
                 </div>

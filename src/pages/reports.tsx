@@ -119,56 +119,72 @@ export function ReportsPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Facturas del Mes</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalFacturas}</div>
-            <p className="text-xs text-muted-foreground">
-              {format(new Date(), 'MMMM yyyy', { locale: es })}
-            </p>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <Receipt className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Facturas del Mes</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{totalFacturas}</div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  {format(new Date(), 'MMMM yyyy', { locale: es })}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatVES(totalVentasVES)}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatUSD(totalVentasUSD)} USD ref.
-            </p>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Ventas Totales</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(totalVentasVES)}</div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  {formatUSD(totalVentasUSD)} USD ref.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">IGTF Acumulado</CardTitle>
-            <Calculator className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatVES(totalIGTF)}</div>
-            <p className="text-xs text-muted-foreground">
-              3% de transacciones USD
-            </p>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <Calculator className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">IGTF Acumulado</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(totalIGTF)}</div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  3% de transacciones USD
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatVES(promedioFactura)}</div>
-            <p className="text-xs text-muted-foreground">
-              Por factura emitida
-            </p>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <TrendingUp className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Ticket Promedio</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(promedioFactura)}</div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  Por factura emitida
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -393,7 +393,7 @@ export function CustomersPage() {
       </Card>
 
       {/* Cards - Mobile */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden grid grid-cols-2 gap-2 sm:gap-3">
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">
@@ -413,71 +413,61 @@ export function CustomersPage() {
         ) : (
           filteredCustomers.map((customer) => (
             <Card key={customer.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-3 sm:p-6">
-                <div className="space-y-2 sm:space-y-4">
-                  {/* Header with RIF and actions */}
+              <CardContent className="p-2 sm:p-3">
+                <div className="space-y-1 sm:space-y-2">
+                  {/* Header compact */}
                   <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-mono text-sm font-medium">{customer.rif}</div>
-                      <div className="font-semibold">{customer.razonSocial}</div>
-                      {customer.nombre && (
-                        <div className="text-sm text-muted-foreground">{customer.nombre}</div>
-                      )}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono text-xs font-medium truncate">{customer.rif}</div>
+                      <div className="font-semibold text-xs sm:text-sm truncate" title={customer.razonSocial}>
+                        {customer.razonSocial}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 ml-1">
                       {canWrite('clientes') && (
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-6 w-6 p-0"
                           onClick={() => handleEdit(customer)}
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-3 w-3" />
                         </Button>
                       )}
                       {canDelete('clientes') && (
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-6 w-6 p-0"
                           onClick={() => handleDelete(customer.id!)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       )}
                     </div>
                   </div>
 
-                  {/* Contact info */}
-                  <div className="space-y-1 sm:space-y-2">
-                    <div className="text-sm">
-                      <div className="font-medium">Domicilio:</div>
-                      <div className="text-muted-foreground">{customer.domicilio}</div>
-                    </div>
-                    {(customer.telefono || customer.email) && (
-                      <div className="text-sm">
-                        <div className="font-medium">Contacto:</div>
-                        <div className="space-y-1">
-                          {customer.telefono && (
-                            <div className="text-muted-foreground">{customer.telefono}</div>
-                          )}
-                          {customer.email && (
-                            <div className="text-muted-foreground">{customer.email}</div>
-                          )}
-                        </div>
-                      </div>
+                  {/* Contact info compact */}
+                  <div className="text-xs text-muted-foreground">
+                    {customer.telefono && (
+                      <div className="truncate">{customer.telefono}</div>
+                    )}
+                    {customer.email && (
+                      <div className="truncate">{customer.email}</div>
                     )}
                   </div>
 
-                  {/* Badges */}
+                  {/* Badges compact */}
                   {(customer.esContribuyenteEspecial || customer.esAgenteRetencion) && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       {customer.esContribuyenteEspecial && (
-                        <Badge variant="secondary" className="text-xs">
-                          Contribuyente Especial
+                        <Badge variant="secondary" className="text-xs px-1 py-0">
+                          C.E.
                         </Badge>
                       )}
                       {customer.esAgenteRetencion && (
-                        <Badge variant="secondary" className="text-xs">
-                          Agente de Retención
+                        <Badge variant="secondary" className="text-xs px-1 py-0">
+                          A.R.
                         </Badge>
                       )}
                     </div>

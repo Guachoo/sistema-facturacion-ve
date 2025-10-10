@@ -98,41 +98,60 @@ export function InvoicesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Facturas</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{invoices.length}</div>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <FileText className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Total Facturas</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{invoices.length}</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Emitidas</CardTitle>
-            <FileText className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{totalEmitidas}</div>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <FileText className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Emitidas</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{totalEmitidas}</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Notas C/D</CardTitle>
-            <FileEdit className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{totalNotas}</div>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <FileEdit className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Notas C/D</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{totalNotas}</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas del Mes</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatVES(totalVentasMes)}</div>
+          <CardContent className="p-2 sm:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <FileText className="h-4 w-4 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Ventas del Mes</div>
+                <div className="text-xs sm:text-2xl font-bold leading-tight">{formatVES(totalVentasMes)}</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -347,7 +366,7 @@ export function InvoicesPage() {
       </Card>
 
       {/* Cards - Mobile */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden grid grid-cols-2 gap-2 sm:gap-3">
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">
@@ -367,60 +386,56 @@ export function InvoicesPage() {
         ) : (
           filteredInvoices.map((invoice) => (
             <Card key={invoice.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-3 sm:p-6">
-                <div className="space-y-2 sm:space-y-4">
-                  {/* Header with number and actions */}
+              <CardContent className="p-2 sm:p-3">
+                <div className="space-y-1 sm:space-y-2">
+                  {/* Header compact */}
                   <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-mono font-medium">{invoice.numero}</div>
-                      <div className="text-xs text-muted-foreground">{invoice.numeroControl}</div>
-                      <div className="text-sm text-muted-foreground">{formatDateVE(invoice.fecha)}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono text-xs font-medium truncate">{invoice.numero}</div>
+                      <div className="text-xs text-muted-foreground">{formatDateVE(invoice.fecha)}</div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 ml-1">
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-6 w-6 p-0"
                         onClick={() => handlePreview(invoice)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3 w-3" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-6 w-6 p-0"
                         onClick={() => handleDownloadPDF(invoice)}
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
 
-                  {/* Client info */}
-                  <div className="space-y-2">
-                    <div className="text-sm">
-                      <div className="font-medium">Cliente:</div>
-                      <div className="text-muted-foreground">{invoice.receptor.razonSocial}</div>
-                      <div className="font-mono text-xs text-muted-foreground">{invoice.receptor.rif}</div>
+                  {/* Client compact */}
+                  <div className="text-xs text-muted-foreground">
+                    <div className="truncate" title={invoice.receptor.razonSocial}>
+                      {invoice.receptor.razonSocial}
                     </div>
                   </div>
 
-                  {/* Totals and status */}
+                  {/* Total and status */}
                   <div className="flex items-center justify-between">
-                    <div className="text-sm">
-                      <div className="font-mono font-bold">{formatVES(invoice.total)}</div>
-                      <div className="font-mono text-muted-foreground">{formatUSD(invoice.totalUsd)}</div>
+                    <div className="text-xs font-mono font-bold">
+                      {formatVES(invoice.total)}
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex gap-1">
                       <Badge
                         variant={
                           invoice.status === 'active' ? 'default' :
                           invoice.status === 'voided' ? 'destructive' : 'secondary'
                         }
+                        className="text-xs px-1 py-0"
                       >
-                        {invoice.status === 'active' ? 'Activa' :
-                         invoice.status === 'voided' ? 'Anulada' : 'Borrador'}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {invoice.channel === 'digital' ? 'Digital' : 'Fiscal'}
+                        {invoice.status === 'active' ? 'Act' :
+                         invoice.status === 'voided' ? 'Anu' : 'Bor'}
                       </Badge>
                     </div>
                   </div>

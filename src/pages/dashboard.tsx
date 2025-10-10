@@ -62,68 +62,76 @@ export function DashboardPage() {
       </div>
 
       {/* KPIs Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ventas del Mes
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatVES(kpis.totalVentasMes)}
+          <CardContent className="p-2 sm:p-4 md:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-7 sm:w-7 md:h-8 md:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Ventas del Mes</div>
+                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">
+                  {formatVES(kpis.totalVentasMes)}
+                </div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  ≈ {formatUSD(totalUsdReferencia)}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Equivalente: {formatUSD(totalUsdReferencia)}
-            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              % Operaciones USD
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpis.porcentajeUSD}%</div>
-            <p className="text-xs text-muted-foreground">
-              Del total de transacciones
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              IGTF del Período
-            </CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatVES(kpis.igtfPeriodo)}
+          <CardContent className="p-2 sm:p-4 md:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <TrendingUp className="h-4 w-4 sm:h-7 sm:w-7 md:h-8 md:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">% USD</div>
+                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">{kpis.porcentajeUSD}%</div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  Del total
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Impuesto sobre transacciones
-            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Facturas Emitidas
-            </CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpis.numeroFacturas}</div>
-            <p className="text-xs text-muted-foreground">
-              Ticket promedio: {formatVES(kpis.ticketPromedio)}
-            </p>
+          <CardContent className="p-2 sm:p-4 md:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <Receipt className="h-4 w-4 sm:h-7 sm:w-7 md:h-8 md:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">IGTF</div>
+                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">
+                  {formatVES(kpis.igtfPeriodo)}
+                </div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  Período
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-2 sm:p-4 md:p-6">
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <FileText className="h-4 w-4 sm:h-7 sm:w-7 md:h-8 md:w-8 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground truncate">Facturas</div>
+                <div className="text-xs sm:text-lg md:text-2xl font-bold leading-tight">{kpis.numeroFacturas}</div>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">
+                  Promedio: {formatVES(kpis.ticketPromedio)}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

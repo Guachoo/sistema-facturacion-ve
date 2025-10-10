@@ -33,48 +33,51 @@ const PermissionToggle: React.FC<PermissionToggleProps> = ({
 }) => {
   const moduleDisplayNames: Record<ModuleType, string> = {
     clientes: 'Clientes',
-    items: 'Items/Productos',
+    items: 'Items',
     facturas: 'Facturas',
     reportes: 'Reportes',
-    configuracion: 'Configuración',
+    configuracion: 'Config',
     usuarios: 'Usuarios'
   };
 
   return (
-    <div className="space-y-3 p-3 sm:p-4 border rounded-lg">
-      <div className="flex items-center space-x-2">
-        <Shield className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium text-sm sm:text-base">{moduleDisplayNames[module]}</span>
+    <div className="space-y-1 p-1.5 border rounded text-xs">
+      <div className="flex items-center space-x-1">
+        <Shield className="h-2.5 w-2.5 text-muted-foreground" />
+        <span className="font-medium">{moduleDisplayNames[module]}</span>
       </div>
 
-      <div className="space-y-3 pl-2 sm:pl-6">
+      <div className="space-y-0.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor={`${module}-read`} className="text-sm">Leer</Label>
+          <Label htmlFor={`${module}-read`} className="text-xs">Leer</Label>
           <Switch
             id={`${module}-read`}
             checked={permissions[`${module}_read`] || false}
             onCheckedChange={(checked) => onPermissionChange(module, 'read', checked)}
             disabled={disabled}
+            className="scale-75"
           />
         </div>
 
         <div className="flex items-center justify-between">
-          <Label htmlFor={`${module}-write`} className="text-sm">Escribir</Label>
+          <Label htmlFor={`${module}-write`} className="text-xs">Escribir</Label>
           <Switch
             id={`${module}-write`}
             checked={permissions[`${module}_write`] || false}
             onCheckedChange={(checked) => onPermissionChange(module, 'write', checked)}
             disabled={disabled}
+            className="scale-75"
           />
         </div>
 
         <div className="flex items-center justify-between">
-          <Label htmlFor={`${module}-delete`} className="text-sm">Eliminar</Label>
+          <Label htmlFor={`${module}-delete`} className="text-xs">Eliminar</Label>
           <Switch
             id={`${module}-delete`}
             checked={permissions[`${module}_delete`] || false}
             onCheckedChange={(checked) => onPermissionChange(module, 'delete', checked)}
             disabled={disabled}
+            className="scale-75"
           />
         </div>
       </div>
@@ -246,23 +249,16 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto mx-2 sm:mx-4 md:mx-auto w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] md:w-auto">
-        <DialogHeader>
-          <DialogTitle>Gestionar Permisos - {user.nombre}</DialogTitle>
-          <DialogDescription>
-            Configura los permisos de acceso por módulo para este usuario.
+      <DialogContent className="max-w-6xl mx-1 sm:mx-2 md:mx-auto w-[calc(100vw-0.5rem)] sm:w-[calc(100vw-1rem)] md:w-auto max-h-[95vh]">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-sm sm:text-base">Gestionar Permisos - {user.nombre}</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
+            Configura los permisos de acceso por módulo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <Alert>
-            <Settings className="h-4 w-4" />
-            <AlertDescription>
-              Los permisos se organizan por módulo. Cada módulo tiene tres niveles: Leer, Escribir y Eliminar.
-            </AlertDescription>
-          </Alert>
-
-          <div className="grid gap-3 sm:gap-4 max-h-[50vh] overflow-y-auto">
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 sm:gap-2">
             {modules.map(module => (
               <PermissionToggle
                 key={module}
@@ -274,12 +270,12 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-4">
-            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+          <div className="flex flex-col xs:flex-row justify-end gap-1.5 pt-2">
+            <Button variant="outline" onClick={onClose} className="w-full xs:w-auto text-xs px-3 py-1.5">
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={updatePermissionsMutation.isPending} className="w-full sm:w-auto">
-              {updatePermissionsMutation.isPending ? 'Guardando...' : 'Guardar Permisos'}
+            <Button onClick={handleSave} disabled={updatePermissionsMutation.isPending} className="w-full xs:w-auto text-xs px-3 py-1.5">
+              {updatePermissionsMutation.isPending ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
         </div>
@@ -455,63 +451,71 @@ const UsersPage: React.FC = () => {
           </Card>
 
           {/* Cards - Mobile */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden grid grid-cols-2 gap-2 sm:gap-3">
             {users.map((user) => (
               <Card key={user.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 sm:p-6">
-                  <div className="space-y-2 sm:space-y-4">
-                    {/* Header with user info and actions */}
+                <CardContent className="p-2 sm:p-3">
+                  <div className="space-y-1 sm:space-y-2">
+                    {/* Header compact */}
                     <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-medium">{user.nombre}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium truncate" title={user.nombre}>{user.nombre}</div>
+                        <div className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1 ml-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleManagePermissions(user)}
+                          className="h-6 w-6 p-0"
+                          onClick={() => setPermissionsUser(user)}
                         >
-                          <Settings className="h-4 w-4" />
+                          <Shield className="h-3 w-3" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditUser(user)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {canDelete('usuarios') && (
+                        {canWrite('usuarios') && (
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => setEditingUser(user)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {canDelete('usuarios') && user.rol !== 'superadmin' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
                             onClick={() => handleDeleteUser(user)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
                     </div>
 
-                    {/* Details */}
-                    <div className="space-y-2">
+                    {/* Role and status */}
+                    <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Rol:</span>
-                        <Badge variant={user.rol === 'superadmin' ? 'default' : 'secondary'}>
-                          {getRoleDisplayName(user.rol)}
+                        <Badge
+                          variant={user.rol === 'superadmin' ? 'default' : 'secondary'}
+                          className="text-xs px-1 py-0"
+                        >
+                          {user.rol === 'superadmin' ? 'Super' :
+                           user.rol === 'admin' ? 'Admin' :
+                           user.rol === 'contador' ? 'Cont' :
+                           user.rol === 'vendedor' ? 'Vend' :
+                           user.rol === 'supervisor' ? 'Sup' : 'Aud'}
+                        </Badge>
+                        <Badge
+                          variant={user.activo ? 'default' : 'destructive'}
+                          className="text-xs px-1 py-0"
+                        >
+                          {user.activo ? 'Act' : 'Inact'}
                         </Badge>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Estado:</span>
-                        <Badge variant={user.activo ? 'default' : 'destructive'}>
-                          {user.activo ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Último Acceso:</span>
-                        <span className="text-sm text-muted-foreground">
-                          {user.ultimo_acceso ? new Date(user.ultimo_acceso).toLocaleDateString() : 'Nunca'}
-                        </span>
+                      <div className="text-xs text-muted-foreground text-center">
+                        {user.ultimo_acceso ? new Date(user.ultimo_acceso).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit' }) : 'Nunca'}
                       </div>
                     </div>
                   </div>
