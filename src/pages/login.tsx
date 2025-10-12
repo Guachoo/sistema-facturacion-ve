@@ -66,19 +66,25 @@ export function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="tu@empresa.com"
+                className={errors.email ? 'border-destructive focus-visible:ring-destructive' : undefined}
                 {...register('email')}
-                error={errors.email?.message}
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email.message}</p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+              <Label htmlFor="password">Contrase�a</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="********"
+                className={errors.password ? 'border-destructive focus-visible:ring-destructive' : undefined}
                 {...register('password')}
-                error={errors.password?.message}
               />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -90,3 +96,5 @@ export function LoginPage() {
     </div>
   );
 }
+
+
