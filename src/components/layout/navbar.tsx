@@ -61,7 +61,7 @@ export function Navbar() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null },
     { name: 'Cotizaciones', href: '/cotizaciones', icon: FileText, permission: 'cotizaciones' },
     { name: 'Facturas', href: '/facturas', icon: FileText, permission: 'facturas' },
-    { name: 'Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
+    { name: 'Clientes & CRM', href: '/clientes', icon: Users, permission: 'clientes' },
     { name: 'Productos/Servicios', href: '/items', icon: Package, permission: 'items' },
     { name: 'Reportes', href: '/reportes', icon: BarChart3, permission: 'reportes' },
     { name: 'Configuración', href: '/configuracion', icon: Settings, permission: 'configuracion' },
@@ -123,7 +123,7 @@ export function Navbar() {
                   )}
                 >
                   <Users className="mr-2 h-4 w-4" />
-                  Clientes
+                  Clientes & CRM
                 </Link>
               </NavigationMenuItem>
 

@@ -9,44 +9,119 @@ const mockItems: Item[] = [
     codigo: 'SERV-001',
     descripcion: 'Consultoría en Sistemas',
     tipo: 'servicio',
-    precioBase: 50000, // VES
+    precioBase: 150000, // VES
     ivaAplica: true,
-    stockActual: 95,
+    stockActual: 100,
     stockMinimo: 10,
     stockMaximo: 200,
-    costoPromedio: 45000,
+    costoPromedio: 140000,
     ubicacion: 'Oficina Principal',
     categoria: 'Servicios',
     activo: true,
   },
   {
     id: '2',
+    codigo: 'SERV-002',
+    descripcion: 'Desarrollo Web',
+    tipo: 'servicio',
+    precioBase: 500000, // VES
+    ivaAplica: true,
+    stockActual: 100,
+    stockMinimo: 5,
+    stockMaximo: 100,
+    costoPromedio: 480000,
+    ubicacion: 'Oficina Principal',
+    categoria: 'Servicios',
+    activo: true,
+  },
+  {
+    id: '3',
     codigo: 'PROD-001',
     descripcion: 'Software de Gestión',
     tipo: 'producto',
-    precioBase: 150000, // VES
+    precioBase: 250000, // VES
     ivaAplica: true,
     stockActual: 50,
     stockMinimo: 5,
     stockMaximo: 100,
-    costoPromedio: 140000,
+    costoPromedio: 230000,
     ubicacion: 'Almacén A',
     categoria: 'Software',
     activo: true,
   },
   {
-    id: '3',
+    id: '4',
     codigo: 'PROD-002',
-    descripcion: 'Licencia Office',
+    descripcion: 'Licencia Office 365',
     tipo: 'producto',
-    precioBase: 80000,
+    precioBase: 120000,
     ivaAplica: true,
-    stockActual: 3,
+    stockActual: 25,
     stockMinimo: 5,
     stockMaximo: 50,
-    costoPromedio: 75000,
+    costoPromedio: 110000,
     ubicacion: 'Digital',
     categoria: 'Software',
+    activo: true,
+  },
+  {
+    id: '5',
+    codigo: 'PROD-003',
+    descripcion: 'Computadora Portátil',
+    tipo: 'producto',
+    precioBase: 1200000,
+    ivaAplica: true,
+    stockActual: 15,
+    stockMinimo: 3,
+    stockMaximo: 30,
+    costoPromedio: 1100000,
+    ubicacion: 'Almacén B',
+    categoria: 'Hardware',
+    activo: true,
+  },
+  {
+    id: '6',
+    codigo: 'SERV-003',
+    descripcion: 'Soporte Técnico',
+    tipo: 'servicio',
+    precioBase: 80000,
+    ivaAplica: true,
+    stockActual: 100,
+    stockMinimo: 10,
+    stockMaximo: 200,
+    costoPromedio: 75000,
+    ubicacion: 'Oficina Principal',
+    categoria: 'Servicios',
+    activo: true,
+  },
+  {
+    id: '7',
+    codigo: 'PROD-004',
+    descripcion: 'Mouse Inalámbrico',
+    tipo: 'producto',
+    precioBase: 35000,
+    ivaAplica: true,
+    stockActual: 80,
+    stockMinimo: 20,
+    stockMaximo: 100,
+    costoPromedio: 30000,
+    ubicacion: 'Almacén C',
+    categoria: 'Accesorios',
+    activo: true,
+  },
+  {
+    id: '8',
+    codigo: 'SERV-004',
+    descripcion: 'Capacitación en Software',
+    tipo: 'servicio',
+    precioBase: 200000,
+    ivaAplica: true,
+    stockActual: 100,
+    stockMinimo: 5,
+    stockMaximo: 50,
+    costoPromedio: 180000,
+    ubicacion: 'Aula Virtual',
+    categoria: 'Servicios',
     activo: true,
   },
 ];
@@ -57,45 +132,64 @@ export const useItems = () => {
     queryFn: async (): Promise<Item[]> => {
       console.log('Fetching items via REST API');
 
-      // Use direct REST API to avoid supabase-js headers issues
-      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
+      try {
+        // Use direct REST API to avoid supabase-js headers issues
+        const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
 
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/items?order=created_at.desc`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/items?order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          }
+        });
+
+        console.log('Items fetch response status:', response.status);
+
+        if (response.status === 404 || response.status === 406) {
+          // Table doesn't exist yet, return mock data
+          console.log('Items table not found, using mock data');
+          return mockItems;
         }
-      });
 
-      console.log('Items fetch response status:', response.status);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('REST API error fetching items:', errorText);
+          // Fallback to mock data on error
+          return mockItems;
+        }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('REST API error fetching items:', errorText);
-        throw new Error(`Error ${response.status}: ${errorText}`);
+        const data = await response.json();
+        console.log('Items fetched via REST API:', data?.length || 0, 'records');
+
+        // Map database items
+        const dbItems = Array.isArray(data) ? data.map(row => ({
+          id: row.id,
+          codigo: row.codigo,
+          descripcion: row.descripcion,
+          tipo: row.tipo,
+          precioBase: parseFloat(row.precio_base) || 0,
+          ivaAplica: row.iva_aplica !== false, // Default to true
+          stockActual: row.stock_actual || 100, // Default stock for services
+          stockMinimo: row.stock_minimo || 0,
+          stockMaximo: row.stock_maximo || 1000,
+          costoPromedio: parseFloat(row.costo_promedio) || 0,
+          ubicacion: row.ubicacion || 'No especificada',
+          categoria: row.categoria || 'General',
+          activo: row.activo !== false, // Default to true if not specified
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        })) : [];
+
+        console.log('Items loaded from database:', dbItems.length);
+        return dbItems;
+
+      } catch (error) {
+        console.error('Error fetching items:', error);
+        throw error;
       }
-
-      const data = await response.json();
-      console.log('Items fetched via REST API:', data?.length || 0, 'records');
-
-      if (!Array.isArray(data)) {
-        console.error('Invalid items response format:', data);
-        return [];
-      }
-
-      return data.map(row => ({
-        id: row.id,
-        codigo: row.codigo,
-        descripcion: row.descripcion,
-        tipo: row.tipo,
-        precioBase: parseFloat(row.precio_base),
-        ivaAplica: row.iva_aplica,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      }));
     },
   });
 };

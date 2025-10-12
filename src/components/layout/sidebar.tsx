@@ -16,7 +16,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Cotizaciones', href: '/cotizaciones', icon: FileTextIcon },
   { name: 'Facturas', href: '/facturas', icon: FileText },
-  { name: 'Clientes', href: '/clientes', icon: Users },
+  { name: 'Clientes & CRM', href: '/clientes', icon: Users },
   { name: 'Productos/Servicios', href: '/items', icon: Package },
   { name: 'Reportes', href: '/reportes', icon: BarChart3 },
   { name: 'Configuración', href: '/configuracion', icon: Settings },

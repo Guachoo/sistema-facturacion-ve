@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import type { Invoice } from '@/types';
 
 export const useInvoices = () => {
@@ -34,7 +33,7 @@ export const useInvoices = () => {
 
       if (!Array.isArray(data)) {
         console.error('Invalid invoices response format:', data);
-        return [];
+        throw new Error('Invalid response format from server');
       }
 
       return data.map(row => ({

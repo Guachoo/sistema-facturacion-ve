@@ -1,29 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import type { Customer } from '@/types';
-
-// Mock data for development
-const mockCustomers: Customer[] = [
-  {
-    id: '1',
-    rif: 'J-12345678-9',
-    razonSocial: 'Empresa Demo C.A.',
-    nombre: 'Empresa Demo',
-    domicilio: 'Caracas, Venezuela',
-    telefono: '+58-212-1234567',
-    email: 'demo@empresa.com',
-    tipoContribuyente: 'especial',
-  },
-  {
-    id: '2',
-    rif: 'V-87654321-0',
-    razonSocial: 'Juan Pérez',
-    domicilio: 'Valencia, Carabobo, Venezuela',
-    telefono: '+58-241-9876543',
-    email: 'juan@email.com',
-    tipoContribuyente: 'ordinario',
-  },
-];
 
 export const useCustomers = () => {
   return useQuery({
@@ -57,7 +33,7 @@ export const useCustomers = () => {
 
       if (!Array.isArray(data)) {
         console.error('Invalid response format:', data);
-        return [];
+        throw new Error('Invalid response format from server');
       }
 
       return data.map(row => ({
