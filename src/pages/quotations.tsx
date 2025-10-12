@@ -1430,13 +1430,24 @@ const QuotationsPage: React.FC = () => {
                     success: 'default',
                     danger: 'destructive',
                     warning: 'secondary',
-                    info: 'ghost'
-                  };
+                    info: 'ghost',
+                    // aceptar también variantes nativas por si llegan directas
+                    default: 'default',
+                    outline: 'outline',
+                    link: 'link',
+                    ghost: 'ghost',
+                    destructive: 'destructive',
+                    secondaryNative: 'secondary',
+                  } as const satisfies Record<string, ButtonProps["variant"]>;
 
                   return (
                     <Button
                       key={action.key}
-                      variant={variantMap[action.variant as keyof typeof variantMap] || 'ghost'}
+                      variant={
+                        (
+                          variantMap[action.variant as keyof typeof variantMap] ?? 'ghost'
+                        ) as ButtonProps['variant']
+                      }
                       size="sm"
                       onClick={() => {
                         handleQuotationAction(viewingQuotation, action.key);

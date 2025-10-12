@@ -18,7 +18,7 @@ export interface Quotation {
   numero: string;
   cliente_id: string;
   cliente_nombre: string;
-  cliente_email?: string;
+  cliente_email?: string;  cliente_rif?: string;
   cliente_domicilio?: string; // ✅ NUEVO (opcional)
   fecha_creacion: string;
   fecha_vencimiento: string;
@@ -90,7 +90,7 @@ export const useQuotations = () => {
         numero: row.numero,
         cliente_id: row.cliente_id || '',
         cliente_nombre: row.cliente_nombre,
-        cliente_email: row.cliente_email,
+        cliente_email: row.cliente_email, cliente_rif: row.cliente_rif,
         fecha_creacion: row.fecha_creacion,
         fecha_vencimiento: row.fecha_vencimiento,
         estado: row.estado,
@@ -333,6 +333,7 @@ export interface QuotationStats {
   rechazadas: number;
   convertidas: number;
   conversionRate: number;
+  valor_total: number;
 }
 
 // Cambiar estado de cotización
@@ -384,7 +385,7 @@ export const useQuotationStats = () => {
     queryFn: async (): Promise<QuotationStats> => {
       console.log('Fetching quotation statistics');
 
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/quotations?select=estado`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/quotations?select=estado,total`, {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -405,6 +406,8 @@ export const useQuotationStats = () => {
       const stats = quotations.reduce(
         (acc, q) => {
           acc.total++;
+          const monto = parseFloat(q.total) || 0;
+          acc.valor_total += monto;
           switch (q.estado) {
             case 'borrador':
               acc.borradores++;
@@ -432,6 +435,7 @@ export const useQuotationStats = () => {
           rechazadas: 0,
           convertidas: 0,
           conversionRate: 0,
+          valor_total: 0,
         }
       );
 
