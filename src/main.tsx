@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+// Import browser tests for development
+// TODO: Temporarily disabled for debugging
+// import './lib/browser-test';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

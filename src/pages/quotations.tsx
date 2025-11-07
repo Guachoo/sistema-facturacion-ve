@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
   Edit,
@@ -12,8 +12,12 @@ import {
   Search,
   X
 } from 'lucide-react';
+import { runTransactionIdIntegrationTests } from '@/lib/transaction-id-integration-test';
+import { testUserJSON } from '@/lib/user-json-test';
+import { testDownloadDocumentJSON } from '@/lib/download-document-test';
+import { testVoidDocumentJSON } from '@/lib/void-document-test';
 import { Button } from '@/components/ui/button';
-import type { ButtonProps } from '@/components/ui/button'; // 👈 agrega esta línea aquí
+import type { ButtonProps } from '@/components/ui/button'; // 🔧 agrega esta línea aquí
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -99,7 +103,10 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   const searchRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
   // Calculate totals
-  const subtotal = quotationItems.reduce((sum, item) => sum + item.total, 0);
+  const subtotal = quotationItems.reduce((sum, item) => {
+    const total = typeof item.total === 'number' ? item.total : parseFloat(item.total) || 0;
+    return sum + total;
+  }, 0);
   const descuentoGlobal = 0; // TODO: Add global discount functionality
   const baseGravable = subtotal - descuentoGlobal;
   const iva = baseGravable * 0.16; // 16% IVA
@@ -185,8 +192,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     updateItem(itemIndex, 'precio_unitario', product.precioBase);
 
     // Recalcular total del item
-    const cantidad = quotationItems[itemIndex]?.cantidad || 1;
-    const descuento = quotationItems[itemIndex]?.descuento || 0;
+    const cantidad = Number(quotationItems[itemIndex]?.cantidad) || 1;
+    const descuento = Number(quotationItems[itemIndex]?.descuento) || 0;
     const nuevoTotal = (cantidad * product.precioBase) - descuento;
     updateItem(itemIndex, 'total', nuevoTotal);
 
@@ -213,8 +220,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
 
     // Recalculate item total
     const item = updatedItems[index];
-    const itemSubtotal = item.cantidad * item.precio_unitario;
-    const itemDescuento = (itemSubtotal * item.descuento) / 100;
+    const itemSubtotal = Number(item.cantidad) * Number(item.precio_unitario);
+    const itemDescuento = (itemSubtotal * Number(item.descuento)) / 100;
     item.total = itemSubtotal - itemDescuento;
 
     setQuotationItems(updatedItems);
@@ -277,7 +284,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                   onValueChange={handleClienteChange}
                 >
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="🔍 Seleccionar cliente" />
+                    <SelectValue placeholder="­ƒöì Seleccionar cliente" />
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map((customer) => (
@@ -307,7 +314,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                   type="email"
                   value={formData.cliente_email}
                   onChange={(e) => setFormData(prev => ({ ...prev, cliente_email: e.target.value }))}
-                  placeholder="📧 email@cliente.com"
+                  placeholder="­ƒôº email@cliente.com"
                   className="h-11"
                 />
               </div>
@@ -319,7 +326,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
   <Card className="overflow-hidden">
     <CardHeader className="bg-gray-50 dark:bg-gray-800/50 border-b">
       <CardTitle className="flex items-center space-x-2">
-        <div className="h-2 w-2 bg-orange-500 rounded-full"></div>
+        <Clock className="h-5 w-5 text-orange-500" />
         <span>Fechas y Vigencia</span>
       </CardTitle>
       <CardDescription>
@@ -329,7 +336,8 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
     <CardContent className="p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label htmlFor="fecha_vencimiento" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <Label htmlFor="fecha_vencimiento" className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            <Clock className="h-4 w-4" />
             Fecha de Vencimiento *
           </Label>
           <Input
@@ -515,7 +523,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                           {items.find(p => p.id === item.item_id)?.codigo} - {item.descripcion}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Precio base: {formatVES(item.precio_unitario)}
+                          Precio base: {formatVES(Number(item.precio_unitario))}
                         </div>
                       </div>
                     )}
@@ -566,7 +574,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                     <div className="space-y-3">
                       <Label className="text-sm font-semibold text-gray-700">Total</Label>
                       <Input
-                        value={formatVES(item.total)}
+                        value={formatVES(Number(item.total))}
                         readOnly
                         className="bg-green-50 border-green-200 text-green-800 font-semibold text-right h-11"
                       />
@@ -581,7 +589,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                     value={item.descripcion || ''}
                     onChange={(e) => updateItem(index, 'descripcion', e.target.value)}
                     rows={4}
-                    placeholder="💬 Descripción detallada del producto o servicio, especificaciones, características adicionales..."
+                    placeholder="📝 Descripción detallada del producto o servicio, especificaciones, características adicionales..."
                     className="resize-none bg-white"
                   />
                 </div>
@@ -641,7 +649,7 @@ const QuotationForm: React.FC<QuotationFormProps> = ({
                 id="observaciones"
                 value={formData.observaciones}
                 onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-                placeholder="💭 Escribe aquí cualquier observación especial, términos y condiciones, o notas importantes para esta cotización..."
+                placeholder="📄 Escribe aquí cualquier observación especial, términos y condiciones, o notas importantes para esta cotización..."
                 rows={6}
                 className="resize-none"
               />
@@ -705,7 +713,11 @@ const QuotationsPage: React.FC = () => {
   const { data: quotations = [], isLoading: quotationsLoading } = useQuotations();
   const { data: customers = [] } = useCustomers();
   const { data: items = [] } = useItems();
-  const { data: stats, isLoading: statsLoading, error: statsError } = useQuotationStats();
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuotationStats() as {
+    data: QuotationStats | undefined;
+    isLoading: boolean;
+    error: any;
+  };
 
   // Mutations
   const createQuotationMutation = useCreateQuotation();
@@ -714,6 +726,50 @@ const QuotationsPage: React.FC = () => {
   const convertQuotationMutation = useConvertQuotationToInvoice();
   const changeStatusMutation = useChangeQuotationStatus();
   const convertAdvancedMutation = useConvertQuotationToInvoiceAdvanced();
+
+  // Helper function to get customer details for enhanced display
+  const getCustomerDetails = (quotation: any) => {
+    const customer = customers.find(c => c.id === quotation.cliente_id);
+    return {
+      nombre: quotation.cliente_nombre,
+      email: quotation.cliente_email,
+      rif: customer?.rif || 'N/A',
+      domicilio: customer?.domicilio || 'No especificado',
+      telefono: customer?.telefono || 'No especificado'
+    };
+  };
+
+  // Helper function to get item details and calculate quotation summary
+  const getQuotationSummary = (quotation: any) => {
+    if (!quotation.items || quotation.items.length === 0) {
+      return {
+        totalItems: 0,
+        itemsPreview: '',
+        hasCompleteItemInfo: false
+      };
+    }
+
+    const itemsWithDetails = quotation.items.map((quotationItem: any) => {
+      const fullItem = items.find(item => item.id === quotationItem.item_id);
+      return {
+        ...quotationItem,
+        fullDetails: fullItem
+      };
+    });
+
+    const totalItems = quotation.items.length;
+    const firstTwoItems = itemsWithDetails.slice(0, 2);
+    const itemsPreview = firstTwoItems
+      .map((item: any) => item.fullDetails?.codigo || item.descripcion?.substring(0, 20) || 'Item')
+      .join(', ') + (totalItems > 2 ? ` +${totalItems - 2} más` : '');
+
+    return {
+      totalItems,
+      itemsPreview,
+      hasCompleteItemInfo: itemsWithDetails.every((item: any) => item.fullDetails)
+    };
+  };
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
@@ -822,6 +878,16 @@ const QuotationsPage: React.FC = () => {
       case 'view':
         setViewingQuotation(quotation);
         break;
+      case 'delete':
+        if (canDelete('cotizaciones')) {
+          const confirmDelete = window.confirm('¿Estás seguro de que deseas eliminar esta cotización?');
+          if (confirmDelete) {
+            await handleDeleteQuotation(quotation.id!);
+          }
+        } else {
+          toast.error('No tienes permisos para eliminar cotizaciones');
+        }
+        break;
       default:
         console.warn('Unknown action:', actionKey);
     }
@@ -841,7 +907,7 @@ const QuotationsPage: React.FC = () => {
   };
 
   // Computed stats as fallback (always works)
-  const fallbackStats = {
+  const fallbackStats: QuotationStats = {
     total: quotations.length,
     borradores: quotations.filter(q => q.estado === 'borrador').length,
     enviadas: quotations.filter(q => q.estado === 'enviada').length,
@@ -866,7 +932,7 @@ const QuotationsPage: React.FC = () => {
   console.log('Calculated fallbackStats:', fallbackStats);
 
   // Ensure displayStats is never undefined
-  const displayStats = stats && typeof stats === 'object' && stats.total !== undefined
+  const displayStats: QuotationStats = stats && typeof stats === 'object' && stats.total !== undefined
     ? stats
     : fallbackStats;
 
@@ -880,12 +946,42 @@ const QuotationsPage: React.FC = () => {
             Gestiona cotizaciones y conviértelas en facturas
           </p>
         </div>
-        {canWrite('cotizaciones') && (
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Cotización
+        <div className="flex flex-col sm:flex-row gap-2">
+          {canWrite('cotizaciones') && (
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Cotización
+            </Button>
+          )}
+          <Button
+            onClick={() => runTransactionIdIntegrationTests()}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            🧪 Test Transaction IDs
           </Button>
-        )}
+          <Button
+            onClick={() => testUserJSON()}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            📄 Test User JSON
+          </Button>
+          <Button
+            onClick={() => testDownloadDocumentJSON()}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            📥 Test Download JSON
+          </Button>
+          <Button
+            onClick={() => testVoidDocumentJSON()}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            ❌ Test Void JSON
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Dashboard */}
@@ -893,8 +989,22 @@ const QuotationsPage: React.FC = () => {
         <Card>
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col">
-              <div className="text-lg sm:text-xl font-bold">{displayStats.total}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Total</div>
+              {statsLoading ? (
+                <div className="space-y-2">
+                  <div className="h-6 w-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : statsError ? (
+                <div className="flex flex-col items-center text-red-500">
+                  <XCircle className="h-6 w-6 mb-1" />
+                  <div className="text-xs text-center">Error</div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-lg sm:text-xl font-bold">{displayStats.total}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Total</div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -902,8 +1012,22 @@ const QuotationsPage: React.FC = () => {
         <Card>
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col">
-              <div className="text-lg sm:text-xl font-bold text-gray-600">{displayStats.borradores}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Borradores</div>
+              {statsLoading ? (
+                <div className="space-y-2">
+                  <div className="h-6 w-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : statsError ? (
+                <div className="flex flex-col items-center text-red-500">
+                  <XCircle className="h-6 w-6 mb-1" />
+                  <div className="text-xs text-center">Error</div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-lg sm:text-xl font-bold text-gray-600">{displayStats.borradores}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Borradores</div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -911,8 +1035,22 @@ const QuotationsPage: React.FC = () => {
         <Card>
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col">
-              <div className="text-lg sm:text-xl font-bold text-blue-600">{displayStats.enviadas}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Enviadas</div>
+              {statsLoading ? (
+                <div className="space-y-2">
+                  <div className="h-6 w-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : statsError ? (
+                <div className="flex flex-col items-center text-red-500">
+                  <XCircle className="h-6 w-6 mb-1" />
+                  <div className="text-xs text-center">Error</div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-lg sm:text-xl font-bold text-blue-600">{displayStats.enviadas}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Enviadas</div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -920,8 +1058,22 @@ const QuotationsPage: React.FC = () => {
         <Card>
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col">
-              <div className="text-lg sm:text-xl font-bold text-green-600">{displayStats.aprobadas}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Aprobadas</div>
+              {statsLoading ? (
+                <div className="space-y-2">
+                  <div className="h-6 w-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : statsError ? (
+                <div className="flex flex-col items-center text-red-500">
+                  <XCircle className="h-6 w-6 mb-1" />
+                  <div className="text-xs text-center">Error</div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-lg sm:text-xl font-bold text-green-600">{displayStats.aprobadas}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Aprobadas</div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -929,8 +1081,22 @@ const QuotationsPage: React.FC = () => {
         <Card>
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col">
-              <div className="text-lg sm:text-xl font-bold text-red-600">{displayStats.rechazadas}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Rechazadas</div>
+              {statsLoading ? (
+                <div className="space-y-2">
+                  <div className="h-6 w-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : statsError ? (
+                <div className="flex flex-col items-center text-red-500">
+                  <XCircle className="h-6 w-6 mb-1" />
+                  <div className="text-xs text-center">Error</div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-lg sm:text-xl font-bold text-red-600">{displayStats.rechazadas}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Rechazadas</div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -938,8 +1104,22 @@ const QuotationsPage: React.FC = () => {
         <Card>
           <CardContent className="p-3 sm:p-4">
             <div className="flex flex-col">
-              <div className="text-lg sm:text-xl font-bold text-purple-600">{displayStats.convertidas}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Convertidas</div>
+              {statsLoading ? (
+                <div className="space-y-2">
+                  <div className="h-6 w-12 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : statsError ? (
+                <div className="flex flex-col items-center text-red-500">
+                  <XCircle className="h-6 w-6 mb-1" />
+                  <div className="text-xs text-center">Error</div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-lg sm:text-xl font-bold text-purple-600">{displayStats.convertidas}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Convertidas</div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1006,6 +1186,8 @@ const QuotationsPage: React.FC = () => {
         "file-text": FileText,
         refresh: RotateCcw,
         eye: FileText,
+        trash2: Trash2,
+        delete: Trash2,
       } as const;
 
       // Mapa de variantes -> a literales aceptados por ButtonProps["variant"]
@@ -1032,9 +1214,13 @@ const QuotationsPage: React.FC = () => {
               <TableHead>Número</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Fecha</TableHead>
-              <TableHead>Vencimiento</TableHead>
+              <TableHead className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                Vencimiento
+              </TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Total</TableHead>
+              <TableHead>Items</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -1042,13 +1228,13 @@ const QuotationsPage: React.FC = () => {
           <TableBody>
             {quotationsLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   Cargando cotizaciones...
                 </TableCell>
               </TableRow>
             ) : quotations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   No se encontraron cotizaciones
                 </TableCell>
               </TableRow>
@@ -1059,13 +1245,25 @@ const QuotationsPage: React.FC = () => {
 
                 return (
                   <TableRow key={quotation.id}>
-                    <TableCell className="font-medium">{quotation.numero}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>
+                        <div>{quotation.numero}</div>
+                        {quotation.transaction_id && (
+                          <div className="text-xs text-muted-foreground font-mono">
+                            TXN: {quotation.transaction_id}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
 
                     <TableCell>
                       <div>
-                        <div className="font-medium">{quotation.cliente_nombre}</div>
+                        <div className="font-medium">{getCustomerDetails(quotation).nombre}</div>
                         <div className="text-sm text-muted-foreground">
-                          {quotation.cliente_email}
+                          {getCustomerDetails(quotation).email}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          RIF: {getCustomerDetails(quotation).rif}
                         </div>
                       </div>
                     </TableCell>
@@ -1087,9 +1285,35 @@ const QuotationsPage: React.FC = () => {
 
                     <TableCell>{formatVES(quotation.total)}</TableCell>
 
+                    <TableCell>
+                      <div className="text-sm">
+                        <div className="font-medium">{getQuotationSummary(quotation).totalItems} items</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          {getQuotationSummary(quotation).itemsPreview}
+                        </div>
+                      </div>
+                    </TableCell>
+
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-1">
                         {getAvailableActions(quotation)
+                          .filter(action => {
+                            // Solo mostrar acciones de cambio de estado si el usuario tiene permisos
+                            if (!['send', 'approve', 'reject', 'review'].includes(action.key)) {
+                              return true; // Permitir acciones que no cambian estado
+                            }
+
+                            // Mapear acciones a estados objetivo
+                            const actionToStatus: Record<string, QuotationStatus> = {
+                              send: 'enviada',
+                              approve: 'aprobada',
+                              reject: 'rechazada',
+                              review: 'borrador'
+                            };
+
+                            const newStatus = actionToStatus[action.key];
+                            return newStatus ? canChangeStatus(quotation.estado, newStatus) : false;
+                          })
                           .slice(0, 3)
                           .map((action) => {
                             // Icono seguro
@@ -1110,10 +1334,11 @@ const QuotationsPage: React.FC = () => {
                                 }
                                 title={action.label}
                                 disabled={
-                                  !canWrite("cotizaciones") &&
-                                  (["edit", "send", "approve", "reject", "convert"] as const).includes(
-                                    action.key as any
-                                  )
+                                  (!canWrite("cotizaciones") &&
+                                    (["edit", "send", "approve", "reject", "convert"] as const).includes(
+                                      action.key as any
+                                    )) ||
+                                  (!canDelete('cotizaciones') && action.key === "delete")
                                 }
                               >
                                 <IconComponent className="h-4 w-4" />
@@ -1148,10 +1373,29 @@ const QuotationsPage: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{quotation.numero}</div>
-                      <div className="text-xs text-muted-foreground">{quotation.cliente_nombre}</div>
+                      <div className="text-xs text-muted-foreground">{getCustomerDetails(quotation).nombre}</div>
+                      <div className="text-xs text-muted-foreground">RIF: {getCustomerDetails(quotation).rif}</div>
                     </div>
                     <div className="flex gap-1 ml-1">
-                      {getAvailableActions(quotation).slice(0, 2).map((action) => {
+                      {getAvailableActions(quotation)
+                        .filter(action => {
+                          // Solo mostrar acciones de cambio de estado si el usuario tiene permisos
+                          if (!['send', 'approve', 'reject', 'review'].includes(action.key)) {
+                            return true; // Permitir acciones que no cambian estado
+                          }
+
+                          // Mapear acciones a estados objetivo
+                          const actionToStatus: Record<string, QuotationStatus> = {
+                            send: 'enviada',
+                            approve: 'aprobada',
+                            reject: 'rechazada',
+                            review: 'borrador'
+                          };
+
+                          const newStatus = actionToStatus[action.key];
+                          return newStatus ? canChangeStatus(quotation.estado, newStatus) : false;
+                        })
+                        .slice(0, 2).map((action) => {
                         const iconMap = {
                           edit: Edit,
                           send: Send,
@@ -1159,7 +1403,9 @@ const QuotationsPage: React.FC = () => {
                           x: XCircle,
                           'file-text': FileText,
                           refresh: RotateCcw,
-                          eye: FileText
+                          eye: FileText,
+                          trash2: Trash2,
+                          delete: Trash2
                         };
                         const IconComponent = iconMap[action.icon as keyof typeof iconMap] || FileText;
 
@@ -1172,7 +1418,8 @@ const QuotationsPage: React.FC = () => {
                             onClick={() => handleQuotationAction(quotation, action.key)}
                             title={action.label}
                             disabled={
-                              !canWrite('cotizaciones') && ['edit', 'send', 'approve', 'reject', 'convert'].includes(action.key)
+                              (!canWrite('cotizaciones') && ['edit', 'send', 'approve', 'reject', 'convert'].includes(action.key)) ||
+                              (!canDelete('cotizaciones') && action.key === 'delete')
                             }
                           >
                             <IconComponent className="h-3 w-3" />
@@ -1201,6 +1448,16 @@ const QuotationsPage: React.FC = () => {
                     <div>Creada: {new Date(quotation.fecha_creacion).toLocaleDateString()}</div>
                     <div>Vence: {new Date(quotation.fecha_vencimiento).toLocaleDateString()}</div>
                   </div>
+
+                  {/* Items Summary */}
+                  <div className="text-xs border-t pt-2">
+                    <div className="font-medium text-gray-700">
+                      {getQuotationSummary(quotation).totalItems} items cotizados
+                    </div>
+                    <div className="text-muted-foreground truncate">
+                      {getQuotationSummary(quotation).itemsPreview}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1210,7 +1467,7 @@ const QuotationsPage: React.FC = () => {
 
       {/* Create Quotation Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-auto max-h-[90vh] overflow-y-auto">
+        <DialogContent className="mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-[95vw] lg:w-[85vw] xl:w-[80vw] max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva Cotización</DialogTitle>
             <DialogDescription>
@@ -1226,7 +1483,7 @@ const QuotationsPage: React.FC = () => {
 
       {/* Edit Quotation Dialog */}
       <Dialog open={!!editingQuotation} onOpenChange={() => setEditingQuotation(null)}>
-        <DialogContent className="mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-auto max-h-[90vh] overflow-y-auto">
+        <DialogContent className="mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-[95vw] lg:w-[85vw] xl:w-[80vw] max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Cotización</DialogTitle>
             <DialogDescription>
@@ -1354,9 +1611,9 @@ const QuotationsPage: React.FC = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">{item.cantidad}</TableCell>
-                              <TableCell className="text-right">{formatVES(item.precio_unitario)}</TableCell>
-                              <TableCell className="text-right">{formatVES(item.descuento || 0)}</TableCell>
-                              <TableCell className="text-right font-medium">{formatVES(item.total)}</TableCell>
+                              <TableCell className="text-right">{formatVES(Number(item.precio_unitario))}</TableCell>
+                              <TableCell className="text-right">{formatVES(Number(item.descuento || 0))}</TableCell>
+                              <TableCell className="text-right font-medium">{formatVES(Number(item.total))}</TableCell>
                             </TableRow>
                           ))
                         ) : (
@@ -1413,7 +1670,25 @@ const QuotationsPage: React.FC = () => {
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2 pt-4 border-t">
-                {getAvailableActions(viewingQuotation).slice(1).map((action) => {
+                {getAvailableActions(viewingQuotation)
+                  .filter(action => {
+                    // Solo mostrar acciones de cambio de estado si el usuario tiene permisos
+                    if (!['send', 'approve', 'reject', 'review'].includes(action.key)) {
+                      return true; // Permitir acciones que no cambian estado
+                    }
+
+                    // Mapear acciones a estados objetivo
+                    const actionToStatus: Record<string, QuotationStatus> = {
+                      send: 'enviada',
+                      approve: 'aprobada',
+                      reject: 'rechazada',
+                      review: 'borrador'
+                    };
+
+                    const newStatus = actionToStatus[action.key];
+                    return newStatus ? canChangeStatus(viewingQuotation.estado, newStatus) : false;
+                  })
+                  .slice(1).map((action) => {
                   const iconMap = {
                     edit: Edit,
                     send: Send,
@@ -1421,7 +1696,9 @@ const QuotationsPage: React.FC = () => {
                     x: XCircle,
                     'file-text': FileText,
                     refresh: RotateCcw,
-                    eye: FileText
+                    eye: FileText,
+                    trash2: Trash2,
+                    delete: Trash2
                   };
                   const IconComponent = iconMap[action.icon as keyof typeof iconMap] || FileText;
                   const variantMap = {
@@ -1454,7 +1731,8 @@ const QuotationsPage: React.FC = () => {
                         setViewingQuotation(null);
                       }}
                       disabled={
-                        !canWrite('cotizaciones') && ['edit', 'send', 'approve', 'reject', 'convert'].includes(action.key)
+                        (!canWrite('cotizaciones') && ['edit', 'send', 'approve', 'reject', 'convert'].includes(action.key)) ||
+                        (!canDelete('cotizaciones') && action.key === 'delete')
                       }
                     >
                       <IconComponent className="mr-2 h-4 w-4" />
@@ -1462,6 +1740,43 @@ const QuotationsPage: React.FC = () => {
                     </Button>
                   );
                 })}
+
+                {/* Quick Convert Button - Simple conversion method */}
+                {viewingQuotation && (viewingQuotation.estado === 'aprobada' || viewingQuotation.estado === 'enviada') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      handleConvertToInvoice(viewingQuotation);
+                      setViewingQuotation(null);
+                    }}
+                    disabled={!canWrite('cotizaciones')}
+                    className="border-green-200 text-green-700 hover:bg-green-50"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Conversión Rápida
+                  </Button>
+                )}
+
+                {/* Direct Status Update - Legacy method for special cases */}
+                {viewingQuotation && viewingQuotation.estado !== 'convertida' && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        handleChangeStatus_old(viewingQuotation.id, 'aprobada');
+                        setViewingQuotation(null);
+                      }}
+                      disabled={!canWrite('cotizaciones') || viewingQuotation.estado === 'aprobada'}
+                      className="text-xs text-orange-600 hover:bg-orange-50"
+                      title="Actualización directa a aprobada (método legacy)"
+                    >
+                      <CheckCircle className="mr-1 h-3 w-3" />
+                      Aprobar Directo
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}

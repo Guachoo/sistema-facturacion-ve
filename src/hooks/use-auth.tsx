@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { tokenManager } from '@/lib/api-client';
+import { tokenManager, userManager } from '@/lib/api-client';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -17,23 +17,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const token = tokenManager.get();
-    if (token) {
-      // En una app real, decodificarías el token para obtener los datos del usuario
-      // Por ahora, verificamos si hay una sesión válida pero sin usuario específico
+    const savedUser = userManager.get();
+
+    if (token && savedUser) {
+      // ✅ SOLUCIONADO: Restaurar tanto token como datos de usuario
+      setUser(savedUser);
       setIsAuthenticated(true);
+      console.log('🔄 Sesión restaurada:', savedUser.nombre);
+    } else if (token && !savedUser) {
+      // Si hay token pero no datos de usuario, limpiar sesión
+      console.log('⚠️ Token sin datos de usuario, limpiando sesión');
+      tokenManager.remove();
+      setIsAuthenticated(false);
     }
   }, []);
 
   const login = (userData: User, token: string) => {
     tokenManager.set(token);
+    userManager.set(userData); // ✅ NUEVO: Guardar datos de usuario
     setUser(userData);
     setIsAuthenticated(true);
+    console.log('✅ Login exitoso:', userData.nombre);
   };
 
   const logout = () => {
-    tokenManager.remove();
+    tokenManager.remove(); // Esto ya limpia tanto token como user data
+    userManager.remove(); // ✅ Limpieza explícita adicional
     setUser(null);
     setIsAuthenticated(false);
+    console.log('👋 Logout exitoso');
   };
 
   return (

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -178,11 +178,11 @@ export function InvoicePreview({
               <strong>Documento generado por medios digitales.</strong> La equivalencia en divisas es referencial. 
               Total exigible en VES.
             </p>
-            <p>
+            <div>
               Canal: <Badge variant="outline" className="text-xs">
                 {invoice.canal === 'digital' ? 'Digital' : 'Máquina Fiscal'}
               </Badge>
-            </p>
+            </div>
             {invoice.estado === 'anulada' && (
               <div className="text-center">
                 <Badge variant="destructive" className="text-lg px-4 py-2">

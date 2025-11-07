@@ -41,10 +41,19 @@ const PermissionToggle: React.FC<PermissionToggleProps> = ({
     usuarios: 'Usuarios'
   };
 
+  const getModuleIcon = (module: ModuleType) => {
+    switch (module) {
+      case 'configuracion':
+        return <Settings className="h-2.5 w-2.5 text-muted-foreground" />;
+      default:
+        return <Shield className="h-2.5 w-2.5 text-muted-foreground" />;
+    }
+  };
+
   return (
     <div className="space-y-1 p-1.5 border rounded text-xs">
       <div className="flex items-center space-x-1">
-        <Shield className="h-2.5 w-2.5 text-muted-foreground" />
+        {getModuleIcon(module)}
         <span className="font-medium">{moduleDisplayNames[module]}</span>
       </div>
 
@@ -117,8 +126,9 @@ const UserForm: React.FC<UserFormProps> = (props) => {
     e.preventDefault();
 
     if (user && 'user' in props) {
-      // Update - exclude email
-      const { email: _, ...updateData } = formData;
+      // Update - exclude email from form data since email cannot be changed
+      const { email, ...updateData } = formData;
+      console.log('Excluding email from update:', email); // Log excluded email for debugging
       props.onSubmit(updateData);
     } else if ('onSubmit' in props) {
       // Create
@@ -242,7 +252,10 @@ const PermissionsDialog: React.FC<PermissionsDialogProps> = ({ user, isOpen, onC
       toast.success('Permisos actualizados correctamente');
       onClose();
     } catch (error) {
-      toast.error('Error al actualizar permisos');
+      console.error('Error updating permissions:', error);
+      toast.error('Error al actualizar permisos', {
+        description: error instanceof Error ? error.message : 'Error desconocido'
+      });
     }
   };
 
@@ -386,6 +399,12 @@ const UsersPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <Alert className="mb-4">
+                <Settings className="h-4 w-4" />
+                <AlertDescription>
+                  Los permisos se configuran por módulo. Cada usuario puede tener permisos de lectura, escritura y eliminación independientes para cada área del sistema.
+                </AlertDescription>
+              </Alert>
               <Table>
                 <TableHeader>
                   <TableRow>

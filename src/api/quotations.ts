@@ -1,4 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { generateDocumentTransactionId } from '../lib/transaction-id-generator';
+
+// Helper function to safely convert string | number to number
+const toNumber = (value: string | number): number =>
+  typeof value === 'number' ? value : parseFloat(value);
 
 // Types for Quotations
 export interface QuotationItem {
@@ -7,15 +12,16 @@ export interface QuotationItem {
   item_id: string;
   nombre: string;
   descripcion?: string;
-  cantidad: number;
-  precio_unitario: number;
-  descuento: number;
-  total: number;
+  cantidad: number | string;
+  precio_unitario: number | string;
+  descuento: number | string;
+  total: number | string;
 }
 
 export interface Quotation {
   id: string;
   numero: string;
+  transaction_id?: string; // ✅ NUEVO - ID transaccional estructurado
   cliente_id: string;
   cliente_nombre: string;
   cliente_email?: string;  cliente_rif?: string;
@@ -88,6 +94,7 @@ export const useQuotations = () => {
       return data.map(row => ({
         id: row.id,
         numero: row.numero,
+        transaction_id: row.transaction_id, // ✅ NUEVO - ID transaccional
         cliente_id: row.cliente_id || '',
         cliente_nombre: row.cliente_nombre,
         cliente_email: row.cliente_email, cliente_rif: row.cliente_rif,
@@ -117,8 +124,18 @@ export const useCreateQuotation = () => {
     mutationFn: async (quotation: Omit<Quotation, 'id' | 'numero' | 'created_at' | 'updated_at'>): Promise<Quotation> => {
       console.log('Creating quotation:', quotation);
 
+      const quotationNumber = generateQuotationNumber();
+
+      // Generate structured transaction ID for quotation (tipo documento 04 - Cotización)
+      const transactionId = generateDocumentTransactionId({
+        serie: 'COT', // Serie para cotizaciones
+        numeroDocumento: quotationNumber,
+        tipoDocumento: '04' // Tipo para cotizaciones/presupuestos
+      });
+
       const insertData = {
-        numero: generateQuotationNumber(),
+        numero: quotationNumber,
+        transaction_id: transactionId, // ✅ NUEVO - ID transaccional estructurado
         cliente_id: quotation.cliente_id,
         cliente_nombre: normalizeString(quotation.cliente_nombre) || '',
         cliente_email: normalizeString(quotation.cliente_email),
@@ -185,6 +202,7 @@ export const useCreateQuotation = () => {
 
       return {
         ...createdQuotation,
+        transaction_id: transactionId, // ✅ ASEGURAR que el transaction_id se retorne
         items: quotation.items || []
       };
     },
@@ -344,7 +362,7 @@ export const useChangeQuotationStatus = () => {
     mutationFn: async ({ quotationId, newStatus, reason }: QuotationStatusChange): Promise<void> => {
       console.log(`Changing quotation ${quotationId} status to:`, newStatus);
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         estado: newStatus,
         updated_at: new Date().toISOString()
       };
@@ -462,7 +480,22 @@ export const canChangeStatus = (currentStatus: QuotationStatus, newStatus: Quota
 };
 
 // Obtener acciones disponibles para una cotización
-export const getAvailableActions = (quotation: any, userRole: string = 'vendedor') => {
+interface BasicQuotation {
+  estado: 'borrador' | 'enviada' | 'aprobada' | 'rechazada' | 'convertida';
+}
+
+interface FullQuotation extends BasicQuotation {
+  cliente_id: string;
+  cliente_rif?: string;
+  cliente_nombre: string;
+  cliente_domicilio?: string;
+  subtotal: string | number;
+  iva: string | number;
+  total: string | number;
+}
+
+
+export const getAvailableActions = (quotation: BasicQuotation, userRole: string = 'vendedor') => {
   const actions = [];
 
   switch (quotation.estado) {
@@ -482,18 +515,21 @@ export const getAvailableActions = (quotation: any, userRole: string = 'vendedor
       break;
 
     case 'enviada':
-      actions.push({
-        key: 'approve',
-        label: 'Aprobar',
-        icon: 'check',
-        variant: 'success'
-      });
-      actions.push({
-        key: 'reject',
-        label: 'Rechazar',
-        icon: 'x',
-        variant: 'danger'
-      });
+      // Solo gerentes y administradores pueden aprobar/rechazar
+      if (userRole === 'gerente' || userRole === 'administrador') {
+        actions.push({
+          key: 'approve',
+          label: 'Aprobar',
+          icon: 'check',
+          variant: 'success'
+        });
+        actions.push({
+          key: 'reject',
+          label: 'Rechazar',
+          icon: 'x',
+          variant: 'danger'
+        });
+      }
       break;
 
     case 'aprobada':
@@ -557,7 +593,7 @@ export const useConvertQuotationToInvoiceAdvanced = () => {
       }
 
       const quotations = await quotationResponse.json();
-      const quotation = quotations[0];
+      const quotation: FullQuotation = quotations[0];
 
       if (!quotation) {
         throw new Error('Cotización no encontrada');
@@ -578,8 +614,82 @@ export const useConvertQuotationToInvoiceAdvanced = () => {
 
       const quotationItems = await itemsResponse.json();
 
-      // 3. Crear la factura con datos completos
+      // 2.1. Obtener datos completos del cliente si faltan en la cotización
+      let customerData = {
+        rif: quotation.cliente_rif,
+        nombre: quotation.cliente_nombre,
+        domicilio: quotation.cliente_domicilio
+      };
+
+      // Si falta información del cliente, obtenerla de la base de datos
+      if (!customerData.rif || !customerData.nombre) {
+        const customerResponse = await fetch(`${SUPABASE_URL}/rest/v1/customers?id=eq.${quotation.cliente_id}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (customerResponse.ok) {
+          const customerArray = await customerResponse.json();
+          if (Array.isArray(customerArray) && customerArray.length > 0) {
+            const customer = customerArray[0];
+            customerData = {
+              rif: customer.rif || customerData.rif,
+              nombre: customer.razon_social || customer.nombre || customerData.nombre,
+              domicilio: customer.domicilio || customerData.domicilio
+            };
+          }
+        }
+      }
+
+      // Validar que tenemos datos mínimos requeridos
+      if (!customerData.rif) {
+        throw new Error('No se puede crear la factura: falta el RIF del cliente');
+      }
+      if (!customerData.nombre) {
+        throw new Error('No se puede crear la factura: falta el nombre del cliente');
+      }
+
+      // 3. Generar número de factura secuencial
+      // Get last invoice number from database
+      const lastInvoiceResponse = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=numero&order=created_at.desc&limit=1`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      let lastNumber = 0;
+      if (lastInvoiceResponse.ok) {
+        const lastInvoiceData = await lastInvoiceResponse.json();
+        if (Array.isArray(lastInvoiceData) && lastInvoiceData.length > 0) {
+          const lastInvoice = lastInvoiceData[0];
+          lastNumber = lastInvoice ? parseInt(lastInvoice.numero.split('-')[1]) : 0;
+        }
+      }
+
+      const nextNumber = lastNumber + 1;
+      const invoiceNumber = `FAC-${String(nextNumber).padStart(6, '0')}`;
+
+      // 4. Generar número de control fiscal
+      const controlNumber = `DIG-${new Date().getFullYear()}${String(nextNumber).padStart(6, '0')}`;
+
+      // Generate structured transaction ID for invoice conversion
+      const transactionId = generateDocumentTransactionId({
+        serie: 'FAC', // Serie para facturas
+        numeroDocumento: invoiceNumber,
+        tipoDocumento: '01' // Factura normal
+      });
+
+      // 5. Crear la factura con datos completos
       const invoiceData = {
+        numero: invoiceNumber,
+        numero_control: controlNumber, // ✅ REQUERIDO - Número de control fiscal
+        transaction_id: transactionId, // ✅ NUEVO - ID transaccional estructurado
         fecha: new Date().toISOString(),
 
         // Emisor (datos de la empresa)
@@ -587,30 +697,30 @@ export const useConvertQuotationToInvoiceAdvanced = () => {
         emisor_rif: 'J-12345678-9',
         emisor_domicilio: 'Caracas, Venezuela',
 
-        // Receptor (desde la cotización)
+        // Receptor (datos validados del cliente)
         customer_id: quotation.cliente_id,
-        receptor_rif: quotation.cliente_rif,
-        receptor_razon_social: quotation.cliente_nombre,
-        receptor_domicilio: quotation.cliente_domicilio || '',
+        receptor_rif: customerData.rif,
+        receptor_razon_social: customerData.nombre,
+        receptor_domicilio: customerData.domicilio || '',
         receptor_tipo_contribuyente: 'ordinario',
 
         // Líneas de factura (convertir items de cotización)
-        lineas: quotationItems.map((item: any) => ({
+        lineas: quotationItems.map((item: QuotationItem) => ({
           item_id: item.item_id,
           codigo: item.nombre || 'ITEM',
           descripcion: item.descripcion,
-          cantidad: parseFloat(item.cantidad),
-          precio_unitario: parseFloat(item.precio_unitario),
-          descuento: parseFloat(item.descuento || 0),
-          total: parseFloat(item.total)
+          cantidad: toNumber(item.cantidad),
+          precio_unitario: toNumber(item.precio_unitario),
+          descuento: toNumber(item.descuento || 0),
+          total: toNumber(item.total)
         })),
 
         // Totales
-        subtotal: parseFloat(quotation.subtotal),
-        monto_iva: parseFloat(quotation.iva),
+        subtotal: toNumber(quotation.subtotal),
+        monto_iva: toNumber(quotation.iva),
         monto_igtf: 0,
-        total: parseFloat(quotation.total),
-        total_usd_referencia: parseFloat(quotation.total) / 36.5,
+        total: toNumber(quotation.total),
+        total_usd_referencia: toNumber(quotation.total) / 36.5,
 
         // BCV
         tasa_bcv: 36.5,
@@ -623,7 +733,7 @@ export const useConvertQuotationToInvoiceAdvanced = () => {
         // Pagos básicos
         pagos: [{
           forma_pago: 'transferencia',
-          monto: parseFloat(quotation.total)
+          monto: toNumber(quotation.total)
         }]
       };
 

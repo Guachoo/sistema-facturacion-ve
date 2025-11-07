@@ -88,6 +88,15 @@ export const generateInvoicePDF = (invoice: Invoice): void => {
   yPosition += 10;
   doc.line(margin, yPosition, pageWidth - margin, yPosition); // Items end line
 
+  // Draw vertical table lines using tableStartY
+  let xPosition = margin;
+  for (let i = 0; i <= colWidths.length; i++) {
+    doc.line(xPosition, tableStartY, xPosition, yPosition);
+    if (i < colWidths.length) {
+      xPosition += colWidths[i];
+    }
+  }
+
   // Payment methods
   if (invoice.pagos.length > 0) {
     yPosition += 15;

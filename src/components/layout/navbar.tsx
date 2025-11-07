@@ -1,14 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   NavigationMenu,
   NavigationMenuContent,
-  NavigationMenuIndicator,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-  NavigationMenuViewport,
 } from '@/components/ui/navigation-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,8 +19,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
-import { usePermissions } from '@/hooks/use-permissions';
+import { usePermissions, type ModuleType } from '@/hooks/use-permissions';
 import { KeyboardShortcutsHelp } from '@/lib/keyboard-shortcuts';
 import {
   Plus,
@@ -34,6 +34,11 @@ import {
   Sun,
   Moon,
   Bell,
+  BellRing,
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  AlertCircle,
   HelpCircle,
   LayoutDashboard,
   Package,
@@ -42,6 +47,8 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFilteredAlerts, useSimpleSystemStatus } from '@/hooks/use-notifications-simple';
+import { useAlertIcons, useAlertTimeFormatting } from '@/hooks/use-notification-helpers';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -49,15 +56,32 @@ export function Navbar() {
   const location = useLocation();
   const [darkMode, setDarkMode] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Usar hooks simples sin intervals automáticos
+  const { alerts, unreadCount, criticalCount, dismissAlert, loading } = useFilteredAlerts({
+    maxItems: 10,
+    enabled: true
+  });
+
+  const { systemStatus } = useSimpleSystemStatus(true);
+  const { getAlertIcon, getAlertColor } = useAlertIcons();
+  const { formatAlertTime } = useAlertTimeFormatting();
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('dark');
   };
 
+
   const isActive = (path: string) => location.pathname === path;
 
-  const navigation = [
+  const navigation: Array<{
+    name: string;
+    href: string;
+    icon: any;
+    permission: ModuleType | null;
+  }> = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null },
     { name: 'Cotizaciones', href: '/cotizaciones', icon: FileText, permission: 'cotizaciones' },
     { name: 'Facturas', href: '/facturas', icon: FileText, permission: 'facturas' },
@@ -67,16 +91,21 @@ export function Navbar() {
     { name: 'Configuración', href: '/configuracion', icon: Settings, permission: 'configuracion' },
   ];
 
-  const adminNavigation = [
+  const adminNavigation: Array<{
+    name: string;
+    href: string;
+    icon: any;
+    permission: ModuleType | null;
+  }> = [
     { name: 'Usuarios', href: '/usuarios', icon: Users2, permission: 'usuarios' },
   ];
 
   const filteredNavigation = navigation.filter(item =>
-    !item.permission || canRead(item.permission)
+    !item.permission || canRead(item.permission as ModuleType)
   );
 
   const filteredAdminNavigation = adminNavigation.filter(item =>
-    !item.permission || canRead(item.permission)
+    !item.permission || canRead(item.permission as ModuleType)
   );
 
   return (
@@ -175,9 +204,142 @@ export function Navbar() {
             {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
-          <Button variant="ghost" size="sm" className="h-8 w-8 lg:h-9 lg:w-9 p-0">
-            <Bell className="h-4 w-4" />
-          </Button>
+          <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 lg:h-9 lg:w-9 p-0 relative">
+                {unreadCount > 0 ? (
+                  <BellRing className="h-4 w-4 text-orange-600" />
+                ) : (
+                  <Bell className="h-4 w-4" />
+                )}
+                {unreadCount > 0 && (
+                  <Badge
+                    variant={criticalCount > 0 ? "destructive" : "secondary"}
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-80" align="end">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notificaciones del Sistema</span>
+                {systemStatus && (
+                  <Badge
+                    variant={systemStatus.seniat.estado === 'online' ? 'default' : 'destructive'}
+                    className="text-xs"
+                  >
+                    {systemStatus.seniat.estado === 'online' ? 'Operativo' : 'Con problemas'}
+                  </Badge>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              {loading ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Cargando notificaciones...
+                </div>
+              ) : alerts.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                  No hay alertas pendientes
+                </div>
+              ) : (
+                <ScrollArea className="h-64">
+                  <div className="space-y-1 p-1">
+                    {alerts.slice(0, 10).map((alert) => {
+                      const AlertIcon = getAlertIcon(alert.tipo);
+                      return (
+                        <DropdownMenuItem
+                          key={alert.id}
+                          className={cn(
+                            "flex items-start gap-3 p-3 cursor-pointer",
+                            alert.estado === 'activa' && "bg-blue-50 border-l-2 border-l-blue-500"
+                          )}
+                          onClick={() => dismissAlert(alert.id)}
+                        >
+                          <div className={cn(
+                            "rounded-full p-1 mt-0.5",
+                            getAlertColor(alert.severidad)
+                          )}>
+                            <AlertIcon className="h-3 w-3" />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">{alert.titulo}</p>
+                              <span className="text-xs text-muted-foreground">
+                                {formatAlertTime(alert.fecha_creacion)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {alert.descripcion}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {alert.severidad}
+                              </Badge>
+                              {alert.documento_afectado?.numero_documento && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {alert.documento_afectado.numero_documento}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+
+              {alerts.length > 10 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-center text-sm text-muted-foreground">
+                    Ver todas las notificaciones ({alerts.length})
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {systemStatus && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="p-3 space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Estado del Sistema</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span>SENIAT:</span>
+                        <Badge
+                          variant={systemStatus.seniat.estado === 'online' ? 'default' : 'destructive'}
+                          className="text-xs"
+                        >
+                          {systemStatus.seniat.estado}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>TFHKA:</span>
+                        <Badge
+                          variant={systemStatus.tfhka.estado === 'conectado' ? 'default' : 'destructive'}
+                          className="text-xs"
+                        >
+                          {systemStatus.tfhka.estado}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Docs hoy:</span>
+                        <span className="font-mono">{systemStatus.sistema_local.documentos_emitidos_hoy}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Emails:</span>
+                        <span className="font-mono">{systemStatus.sistema_local.emails_enviados_hoy}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -215,7 +377,7 @@ export function Navbar() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link to="/configuracion/empresa">
+                <Link to="/configuracion">
                   <Settings className="mr-2 h-4 w-4" />
                   Configuración
                 </Link>

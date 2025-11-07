@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,46 +33,72 @@ import {
   AlertTriangle,
   Package,
   Plus,
-  Search,
   Edit,
   Trash2,
   Download,
-  Upload,
   BarChart3,
-  TrendingUp,
   AlertCircle,
-  CheckCircle,
-  Clock,
   DollarSign,
   ArrowUp,
   ArrowDown,
-  History
+  History,
+  FileText,
+  Calculator,
+  Shield
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { usePriceFormatter, useTablePriceFormatter } from '@/hooks/use-price-formatter';
 import { z } from 'zod';
 import { useItems, useCreateItem, useUpdateItem, useDeleteItem } from '@/api/items';
-import { useInventoryMovements, useCreateInventoryMovement, useInventoryStats, useInventoryAlerts } from '@/api/inventory';
+import { useInventoryMovements, useCreateInventoryMovement, useInventoryAlerts } from '@/api/inventory';
+import { useCommonSeniatCodes } from '@/api/items-extended';
 import { MoneyInput } from '@/components/ui/money-input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { formatVES } from '@/lib/formatters';
+import { formatUSD, formatVES } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { Item, InventoryMovement } from '@/types';
 
-// Enhanced schema with inventory fields
+// Enhanced schema with inventory and fiscal fields
 const itemSchema = z.object({
   codigo: z.string().min(1, 'Código es requerido'),
   descripcion: z.string().min(1, 'Descripción es requerida'),
   tipo: z.enum(['producto', 'servicio'], { message: 'Tipo es requerido' }),
   precioBase: z.number().min(0.01, 'Precio debe ser mayor a 0'),
+  precioUsd: z.number().min(0, 'Precio USD debe ser mayor o igual a 0').optional(),
+  costoUnitario: z.number().min(0, 'Costo debe ser mayor o igual a 0').optional(),
   ivaAplica: z.boolean(),
+
+  // Fiscal fields
+  clasificacionFiscal: z.enum(['gravado', 'exento', 'excluido', 'no_sujeto']).optional(),
+  codigoSeniat: z.string().optional(),
+  categoriaSeniat: z.enum(['bien', 'servicio', 'importado', 'exento']).optional(),
+  codigoArancelario: z.string().optional(),
+  unidadMedida: z.string().optional(),
+  origenFiscal: z.enum(['nacional', 'importado', 'zona_libre']).optional(),
+
+  // Tax configuration
+  alicuotaIva: z.number().min(0).max(100).optional(),
+  exentoIva: z.boolean().optional(),
+  motivoExencion: z.string().optional(),
+
+  // ISLR (Income tax retention)
+  sujetoRetencionIslr: z.boolean().optional(),
+  porcentajeRetencionIslr: z.number().min(0).max(100).optional(),
+  conceptoIslr: z.string().optional(),
+
+  // Inventory fields
+  manejaInventario: z.boolean().optional(),
   stockMinimo: z.number().min(0, 'Stock mínimo debe ser mayor o igual a 0').optional(),
   stockMaximo: z.number().min(0, 'Stock máximo debe ser mayor o igual a 0').optional(),
   costoPromedio: z.number().min(0, 'Costo debe ser mayor o igual a 0').optional(),
   ubicacion: z.string().optional(),
   categoria: z.string().optional(),
   activo: z.boolean().optional(),
+  // Additional fields not in Item type but used in form
+  proveedorPrincipal: z.string().optional(),
+  requierePermisoImportacion: z.boolean().optional(),
 });
 
 const movementSchema = z.object({
@@ -87,7 +113,91 @@ const movementSchema = z.object({
 type ItemForm = z.infer<typeof itemSchema>;
 type MovementForm = z.infer<typeof movementSchema>;
 
+const USD_REFERENCE_THRESHOLD = 10; // Only rescale when the stored USD/VES ratio looks like a real FX rate
+
+// SENIAT categories from Phase 2 implementation
+const seniatCategories = {
+  bien: {
+    label: 'Bien',
+    description: 'Productos físicos y tangibles',
+    alicuotaIvaDefault: 16,
+    requiereCodigoArancelario: false
+  },
+  servicio: {
+    label: 'Servicio',
+    description: 'Servicios profesionales y técnicos',
+    alicuotaIvaDefault: 16,
+    requiereCodigoActividad: true
+  },
+  importado: {
+    label: 'Bien Importado',
+    description: 'Productos importados del exterior',
+    alicuotaIvaDefault: 16,
+    requiereCodigoArancelario: true
+  },
+  exento: {
+    label: 'Exento de IVA',
+    description: 'Productos exentos de IVA según SENIAT',
+    alicuotaIvaDefault: 0,
+    requiereJustificacion: true
+  }
+} as const;
+
+const unidadesMedida = [
+  { codigo: 'UND', descripcion: 'Unidad' },
+  { codigo: 'KG', descripcion: 'Kilogramo' },
+  { codigo: 'LT', descripcion: 'Litro' },
+  { codigo: 'MT', descripcion: 'Metro' },
+  { codigo: 'M2', descripcion: 'Metro Cuadrado' },
+  { codigo: 'M3', descripcion: 'Metro Cúbico' },
+  { codigo: 'HR', descripcion: 'Hora' },
+  { codigo: 'DOC', descripcion: 'Documento' },
+  { codigo: 'PAQ', descripcion: 'Paquete' },
+  { codigo: 'CJ', descripcion: 'Caja' }
+];
+
+// Venezuelan units in the format expected by the component
+const venezuelanUnits = {
+  UND: { symbol: 'UND', name: 'Unidad' },
+  KG: { symbol: 'KG', name: 'Kilogramo' },
+  LT: { symbol: 'LT', name: 'Litro' },
+  MT: { symbol: 'MT', name: 'Metro' },
+  M2: { symbol: 'M²', name: 'Metro Cuadrado' },
+  M3: { symbol: 'M³', name: 'Metro Cúbico' },
+  HR: { symbol: 'HR', name: 'Hora' },
+  DOC: { symbol: 'DOC', name: 'Documento' },
+  PAQ: { symbol: 'PAQ', name: 'Paquete' },
+  CJ: { symbol: 'CJ', name: 'Caja' }
+};
+
+// Memoized component for inventory alerts to optimize performance
+const InventoryAlert = React.memo(({ alert, onAddStock }: {
+  alert: any;
+  onAddStock: (itemId: string) => void;
+}) => (
+  <div className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50">
+    <div className="flex items-center gap-3">
+      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+      <div>
+        <div className="font-medium">{alert.descripcion}</div>
+        <div className="text-sm text-muted-foreground">
+          Stock actual: {alert.stockActual} | Mínimo: {alert.stockMinimo}
+        </div>
+      </div>
+    </div>
+    <Button
+      size="sm"
+      onClick={() => onAddStock(alert.itemId)}
+    >
+      Agregar Stock
+    </Button>
+  </div>
+));
+
 export function ItemsPage() {
+  const { formatTablePrice, isLoadingRate } = useTablePriceFormatter();
+  const { usdToVes, bcvRate: currentBcvRate } = usePriceFormatter();
+  const effectiveBcvRate = currentBcvRate || 224.38;
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -99,8 +209,12 @@ export function ItemsPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
-  const { data: items = [], isLoading, error } = useItems();
-  const { data: inventoryStats } = useInventoryStats();
+  // Fiscal states (commented for future use)
+  // const [showSeniatSuggestions, setShowSeniatSuggestions] = useState(false);
+  // const [fiscalComplianceResult, setFiscalComplianceResult] = useState<Record<string, unknown> | null>(null);
+
+  const { data: items = [], isLoading } = useItems();
+  // const { data: inventoryStats } = useInventoryStats();
   const { data: inventoryAlerts = [] } = useInventoryAlerts();
   const { data: movements = [] } = useInventoryMovements();
 
@@ -108,6 +222,11 @@ export function ItemsPage() {
   const updateMutation = useUpdateItem();
   const deleteMutation = useDeleteItem();
   const createMovementMutation = useCreateInventoryMovement();
+
+  // Phase 2 fiscal hooks
+  const { data: commonSeniatCodes } = useCommonSeniatCodes();
+  // const seniatSuggestionsMutation = useSeniatCodeSuggestions();
+  // const fiscalComplianceMutation = useValidateFiscalCompliance();
 
   // Item form
   const {
@@ -148,7 +267,7 @@ export function ItemsPage() {
   });
 
   // Get unique categories
-  const categories = Array.from(new Set(items.map(item => item.categoria).filter(Boolean)));
+  // const categories = Array.from(new Set(items.map(item => item.categoria).filter(Boolean)));
 
   // Calculate inventory metrics
   const lowStockItems = items.filter(item =>
@@ -163,12 +282,45 @@ export function ItemsPage() {
     (item.stockActual === undefined || item.stockActual <= 0)
   );
 
-  const totalInventoryValue = items.reduce((sum, item) => {
-    if (item.tipo === 'producto' && item.stockActual && item.costoPromedio) {
-      return sum + (item.stockActual * item.costoPromedio);
-    }
-    return sum;
-  }, 0);
+  const inventoryTotals = useMemo(() => {
+    return items.reduce(
+      (acc, item) => {
+        if (item.tipo !== 'producto') {
+          return acc;
+        }
+
+        const stock = item.stockActual ?? 0;
+        if (!stock) {
+          return acc;
+        }
+
+        const priceVes = item.precioBase ?? 0;
+        const costVes = item.costoPromedio ?? priceVes;
+        const usdPrice = item.precioUsd ?? 0;
+        const hasUsdReference = usdPrice > 0 && priceVes > 0;
+        const historicalRate = hasUsdReference ? priceVes / usdPrice : 0;
+        const canRescale = historicalRate > USD_REFERENCE_THRESHOLD;
+
+        const unitUsd = canRescale
+          ? costVes / historicalRate
+          : effectiveBcvRate > 0
+            ? costVes / effectiveBcvRate
+            : 0;
+
+        const unitVes = canRescale
+          ? usdToVes(unitUsd, effectiveBcvRate)
+          : costVes;
+
+        acc.totalInventoryValue += unitVes * stock;
+        acc.totalInventoryValueUsd += unitUsd * stock;
+        return acc;
+      },
+      { totalInventoryValue: 0, totalInventoryValueUsd: 0 }
+    );
+  }, [items, usdToVes, effectiveBcvRate]);
+
+  const totalInventoryValue = inventoryTotals.totalInventoryValue;
+  const totalInventoryValueUsd = inventoryTotals.totalInventoryValueUsd;
 
   const onSubmit = (data: ItemForm) => {
     if (editingItem) {
@@ -436,6 +588,173 @@ export function ItemsPage() {
                   </>
                 )}
 
+                {/* Fiscal Configuration Section */}
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Configuración Fiscal
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="clasificacionFiscal">Clasificación Fiscal</Label>
+                      <Select
+                        value={watch('clasificacionFiscal')}
+                        onValueChange={(value) => setValue('clasificacionFiscal', value as 'gravado' | 'exento' | 'excluido' | 'no_sujeto')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar clasificación" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="gravado">Gravado (16% IVA)</SelectItem>
+                          <SelectItem value="exento">Exento de IVA</SelectItem>
+                          <SelectItem value="excluido">Excluido de IVA</SelectItem>
+                          <SelectItem value="no_sujeto">No Sujeto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="categoriaSeniat">Categoría SENIAT</Label>
+                      <Select
+                        value={watch('categoriaSeniat')}
+                        onValueChange={(value) => setValue('categoriaSeniat', value as 'bien' | 'servicio' | 'importado' | 'exento')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(seniatCategories).map(([key, category]) => (
+                            <SelectItem key={key} value={key}>
+                              {category.label} - {category.description}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="codigoSeniat">Código SENIAT</Label>
+                      <Input
+                        id="codigoSeniat"
+                        {...register('codigoSeniat')}
+                        placeholder="ej. 01010101"
+                        maxLength={8}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Código de 8 dígitos según clasificador SENIAT
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="unidadMedida">Unidad de Medida</Label>
+                      <Select
+                        value={watch('unidadMedida')}
+                        onValueChange={(value) => setValue('unidadMedida', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar unidad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(venezuelanUnits).map(([key, unit]) => (
+                            <SelectItem key={key} value={key}>
+                              {unit.symbol} - {unit.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="origenFiscal">Origen Fiscal</Label>
+                      <Select
+                        value={watch('origenFiscal')}
+                        onValueChange={(value) => setValue('origenFiscal', value as 'nacional' | 'importado' | 'zona_libre')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar origen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nacional">Nacional</SelectItem>
+                          <SelectItem value="importado">Importado</SelectItem>
+                          <SelectItem value="zona_libre">Zona Libre</SelectItem>
+                          <SelectItem value="ensamblado">Ensamblado Nacional</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="alicuotaIva">Alícuota IVA (%)</Label>
+                      <Select
+                        value={watch('alicuotaIva')?.toString()}
+                        onValueChange={(value) => setValue('alicuotaIva', parseFloat(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar alícuota" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0% (Exento)</SelectItem>
+                          <SelectItem value="8">8% (Reducida)</SelectItem>
+                          <SelectItem value="16">16% (General)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="codigoArancelario">Código Arancelario</Label>
+                      <Input
+                        id="codigoArancelario"
+                        {...register('codigoArancelario')}
+                        placeholder="ej. 8471.30.00.00"
+                        maxLength={12}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Para productos importados (formato: XXXX.XX.XX.XX)
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="proveedorPrincipal">Proveedor Principal</Label>
+                      <Input
+                        id="proveedorPrincipal"
+                        {...register('proveedorPrincipal')}
+                        placeholder="Nombre del proveedor"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="exentoIva"
+                        checked={watch('exentoIva')}
+                        onCheckedChange={(checked) => setValue('exentoIva', checked as boolean)}
+                      />
+                      <Label htmlFor="exentoIva">Exento de IVA</Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="sujetoRetencionIslr"
+                        checked={watch('sujetoRetencionIslr')}
+                        onCheckedChange={(checked) => setValue('sujetoRetencionIslr', checked as boolean)}
+                      />
+                      <Label htmlFor="sujetoRetencionIslr">Sujeto a Retención ISLR</Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="requierePermisoImportacion"
+                        checked={Boolean(watch('requierePermisoImportacion'))}
+                        onCheckedChange={(checked) => setValue('requierePermisoImportacion', checked as boolean)}
+                      />
+                      <Label htmlFor="requierePermisoImportacion">Requiere Permiso de Importación</Label>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -499,7 +818,7 @@ export function ItemsPage() {
                 <div className="text-xs font-medium text-muted-foreground">Valor Inventario</div>
                 <div className="text-sm sm:text-xl md:text-2xl font-bold">{formatVES(totalInventoryValue)}</div>
                 <p className="text-xs text-muted-foreground">
-                  Costo promedio
+                  ≈ {formatUSD(totalInventoryValueUsd)} @ BCV {effectiveBcvRate.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -553,26 +872,14 @@ export function ItemsPage() {
           <CardContent>
             <div className="space-y-2">
               {inventoryAlerts.map((alert) => (
-                <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    <div>
-                      <div className="font-medium">{alert.descripcion}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Stock actual: {alert.stockActual} | Mínimo: {alert.stockMinimo}
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      const item = items.find(i => i.id === alert.itemId);
-                      if (item) handleAddMovement(item);
-                    }}
-                  >
-                    Agregar Stock
-                  </Button>
-                </div>
+                <InventoryAlert
+                  key={alert.id}
+                  alert={alert}
+                  onAddStock={(itemId) => {
+                    const item = items.find(i => i.id === itemId);
+                    if (item) handleAddMovement(item);
+                  }}
+                />
               ))}
             </div>
           </CardContent>
@@ -581,10 +888,14 @@ export function ItemsPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="inventory">
             <Package className="mr-2 h-4 w-4" />
             Inventario
+          </TabsTrigger>
+          <TabsTrigger value="fiscal">
+            <FileText className="mr-2 h-4 w-4" />
+            Configuración Fiscal
           </TabsTrigger>
           <TabsTrigger value="movements">
             <History className="mr-2 h-4 w-4" />
@@ -602,13 +913,36 @@ export function ItemsPage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <CardTitle>Lista de Inventario</CardTitle>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 flex-1">
                     <Input
                       placeholder="Buscar por código o nombre..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full sm:w-64"
                     />
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="w-full sm:w-40">
+                        <SelectValue placeholder="Filtrar por tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="producto">Productos</SelectItem>
+                        <SelectItem value="servicio">Servicios</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterCategory} onValueChange={setFilterCategory}>
+                      <SelectTrigger className="w-full sm:w-40">
+                        <SelectValue placeholder="Filtrar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {Array.from(new Set(items.map(item => item.categoria).filter(Boolean))).map((category) => (
+                          <SelectItem key={category} value={category!}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -634,6 +968,7 @@ export function ItemsPage() {
                       <TableHead>Tipo</TableHead>
                       <TableHead>Stock</TableHead>
                       <TableHead>Precio</TableHead>
+                      <TableHead>Información Fiscal</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -679,7 +1014,39 @@ export function ItemsPage() {
                             <span className="text-muted-foreground">N/A</span>
                           )}
                         </TableCell>
-                        <TableCell className="font-mono">{formatVES(item.precioBase)}</TableCell>
+                        <TableCell className="font-mono">
+                          {isLoadingRate ? (
+                            <span className="text-muted-foreground">Cargando...</span>
+                          ) : (
+                            formatTablePrice(item)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {item.codigoSeniat && (
+                              <div className="flex items-center gap-1">
+                                <Shield className="h-3 w-3 text-blue-600" />
+                                <span className="text-xs font-mono">{item.codigoSeniat}</span>
+                              </div>
+                            )}
+                            {item.clasificacionFiscal && (
+                              <Badge variant="outline" className="text-xs">
+                                {item.clasificacionFiscal === 'gravado' ? 'IVA 16%' :
+                                 item.clasificacionFiscal === 'exento' ? 'Exento' :
+                                 item.clasificacionFiscal === 'excluido' ? 'Excluido' :
+                                 'No Sujeto'}
+                              </Badge>
+                            )}
+                            {item.origenFiscal && (
+                              <div className="text-xs text-muted-foreground">
+                                {item.origenFiscal === 'nacional' ? '🇻🇪 Nacional' :
+                                 item.origenFiscal === 'importado' ? '🌍 Importado' :
+                                 item.origenFiscal === 'zona_libre' ? '🏝️ Z. Libre' :
+                                 '🔧 Ensamblado'}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant={item.activo ? 'default' : 'secondary'}>
                             {item.activo ? 'Activo' : 'Inactivo'}
@@ -737,7 +1104,9 @@ export function ItemsPage() {
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <div className="text-muted-foreground">Precio</div>
-                            <div className="font-mono">{formatVES(item.precioBase)}</div>
+                            <div className="font-mono">
+                              {isLoadingRate ? 'Cargando...' : formatTablePrice(item)}
+                            </div>
                           </div>
                           {item.tipo === 'producto' && (
                             <div>
@@ -764,6 +1133,37 @@ export function ItemsPage() {
                             </div>
                           )}
                         </div>
+
+                        {/* Fiscal Information */}
+                        {(item.codigoSeniat || item.clasificacionFiscal || item.origenFiscal) && (
+                          <div className="border-t pt-2">
+                            <div className="text-xs text-muted-foreground mb-1">Información Fiscal</div>
+                            <div className="flex flex-wrap gap-1">
+                              {item.codigoSeniat && (
+                                <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded">
+                                  <Shield className="h-3 w-3 text-blue-600" />
+                                  <span className="text-xs font-mono">{item.codigoSeniat}</span>
+                                </div>
+                              )}
+                              {item.clasificacionFiscal && (
+                                <Badge variant="outline" className="text-xs">
+                                  {item.clasificacionFiscal === 'gravado' ? 'IVA 16%' :
+                                   item.clasificacionFiscal === 'exento' ? 'Exento' :
+                                   item.clasificacionFiscal === 'excluido' ? 'Excluido' :
+                                   'No Sujeto'}
+                                </Badge>
+                              )}
+                              {item.origenFiscal && (
+                                <div className="text-xs text-muted-foreground bg-gray-50 px-2 py-1 rounded">
+                                  {item.origenFiscal === 'nacional' ? '🇻🇪 Nacional' :
+                                   item.origenFiscal === 'importado' ? '🌍 Importado' :
+                                   item.origenFiscal === 'zona_libre' ? '🏝️ Z. Libre' :
+                                   '🔧 Ensamblado'}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex items-center justify-between">
                           <Badge variant={item.activo ? 'default' : 'secondary'}>
@@ -805,6 +1205,202 @@ export function ItemsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="fiscal">
+          <div className="space-y-6">
+            {/* SENIAT Categories Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Categorías SENIAT
+                </CardTitle>
+                <CardDescription>
+                  Configuración fiscal para cumplimiento con SENIAT Venezuela
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {Object.entries(seniatCategories).map(([key, category]) => (
+                    <Card key={key} className="border-l-4 border-l-blue-500">
+                      <CardContent className="pt-4">
+                        <div className="space-y-2">
+                          <h4 className="font-semibold">{category.label}</h4>
+                          <p className="text-sm text-muted-foreground">{category.description}</p>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              IVA: {category.alicuotaIvaDefault}%
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Common SENIAT Codes */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Códigos SENIAT Comunes
+                </CardTitle>
+                <CardDescription>
+                  Códigos más utilizados para productos y servicios
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Categoría</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commonSeniatCodes?.slice(0, 10).map((code: { codigo: string; descripcion: string; categoria: string }) => (
+                      <TableRow key={code.codigo}>
+                        <TableCell>
+                          <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                            {code.codigo}
+                          </code>
+                        </TableCell>
+                        <TableCell>{code.descripcion}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{code.categoria}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              toast.success('Código SENIAT copiado', {
+                                description: `${code.codigo} - ${code.descripcion}`
+                              });
+                              navigator.clipboard.writeText(code.codigo);
+                            }}
+                          >
+                            Copiar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Units of Measure */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5" />
+                  Unidades de Medida
+                </CardTitle>
+                <CardDescription>
+                  Unidades oficiales según estándares venezolanos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {unidadesMedida.map((unidad) => (
+                    <div key={unidad.codigo} className="p-3 border rounded-lg text-center">
+                      <div className="font-mono font-bold text-sm">{unidad.codigo}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{unidad.descripcion}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Items with Fiscal Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Items con Configuración Fiscal
+                </CardTitle>
+                <CardDescription>
+                  Items que tienen códigos SENIAT o configuración fiscal especial
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Código SENIAT</TableHead>
+                      <TableHead>IVA</TableHead>
+                      <TableHead>ISLR</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items
+                      .filter(item => item.codigoSeniat || item.clasificacionFiscal)
+                      .slice(0, 10)
+                      .map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-mono">{item.codigo}</TableCell>
+                          <TableCell>{item.descripcion}</TableCell>
+                          <TableCell>
+                            <Badge variant={item.tipo === 'producto' ? 'default' : 'secondary'}>
+                              {item.tipo}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {item.codigoSeniat ? (
+                              <code className="text-sm bg-gray-100 px-2 py-1 rounded">
+                                {item.codigoSeniat}
+                              </code>
+                            ) : (
+                              <span className="text-muted-foreground">No asignado</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={item.ivaAplica ? 'default' : 'secondary'}>
+                              {item.ivaAplica ? `${item.alicuotaIva || 16}%` : 'Exento'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={item.sujetoRetencionIslr ? 'destructive' : 'outline'}>
+                              {item.sujetoRetencionIslr ? `${item.porcentajeRetencionIslr || 0}%` : 'No'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingItem(item);
+                                setIsDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+
+                {items.filter(item => item.codigoSeniat || item.clasificacionFiscal).length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <h3 className="font-medium">No hay items con configuración fiscal</h3>
+                    <p>Agrega códigos SENIAT a tus productos y servicios</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="movements">

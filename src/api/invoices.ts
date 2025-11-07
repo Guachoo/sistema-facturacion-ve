@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Invoice } from '@/types';
+import { generateDocumentTransactionId } from '../lib/transaction-id-generator';
 
 export const useInvoices = () => {
   return useQuery({
@@ -39,6 +40,7 @@ export const useInvoices = () => {
       return data.map(row => ({
         id: row.id,
         numero: row.numero,
+        transaction_id: row.transaction_id, // ✅ NUEVO - ID transaccional
         numeroControl: row.numero_control,
         fecha: row.fecha,
         emisor: {
@@ -56,6 +58,7 @@ export const useInvoices = () => {
         lineas: row.lineas,
         pagos: row.pagos,
         subtotal: parseFloat(row.subtotal),
+        baseImponible: parseFloat(row.base_imponible || row.subtotal), // Use subtotal as fallback
         montoIva: parseFloat(row.monto_iva),
         montoIgtf: parseFloat(row.monto_igtf),
         total: parseFloat(row.total),
@@ -108,10 +111,18 @@ export const useCreateInvoice = () => {
       const newNumber = `FAC-${String(lastNumber + 1).padStart(6, '0')}`;
       const controlNumber = `DIG-${new Date().getFullYear()}${String(lastNumber + 1).padStart(6, '0')}`;
 
-      console.log('Generated invoice numbers:', { newNumber, controlNumber });
+      // Generate structured transaction ID for invoice
+      const transactionId = generateDocumentTransactionId({
+        serie: 'FAC', // Serie para facturas
+        numeroDocumento: newNumber,
+        tipoDocumento: invoice.estado === 'nota_credito' ? '02' : invoice.estado === 'nota_debito' ? '03' : '01'
+      });
+
+      console.log('Generated invoice numbers:', { newNumber, controlNumber, transactionId });
 
       const insertData = {
         numero: newNumber,
+        // transaction_id: transactionId, // ⚠️ TEMPORALMENTE COMENTADO - columna no existe en DB
         numero_control: controlNumber,
         fecha: invoice.fecha,
         emisor_nombre: invoice.emisor.nombre,
@@ -170,6 +181,7 @@ export const useCreateInvoice = () => {
       return {
         id: createdInvoice.id,
         numero: createdInvoice.numero,
+        transaction_id: transactionId, // ✅ ASEGURAR que el transaction_id se retorne
         numeroControl: createdInvoice.numero_control,
         fecha: createdInvoice.fecha,
         emisor: {
@@ -187,6 +199,7 @@ export const useCreateInvoice = () => {
         lineas: createdInvoice.lineas,
         pagos: createdInvoice.pagos,
         subtotal: parseFloat(createdInvoice.subtotal),
+        baseImponible: parseFloat(createdInvoice.base_imponible || createdInvoice.subtotal), // Use subtotal as fallback
         montoIva: parseFloat(createdInvoice.monto_iva),
         montoIgtf: parseFloat(createdInvoice.monto_igtf),
         total: parseFloat(createdInvoice.total),

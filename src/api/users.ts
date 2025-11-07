@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ModuleType } from '@/hooks/use-permissions';
 
 // Types
 export interface User {
@@ -15,7 +16,7 @@ export interface User {
 export interface UserPermission {
   id: string;
   user_id: string;
-  modulo: 'clientes' | 'items' | 'facturas' | 'reportes' | 'configuracion' | 'usuarios';
+  modulo: ModuleType;
   puede_leer: boolean;
   puede_escribir: boolean;
   puede_eliminar: boolean;

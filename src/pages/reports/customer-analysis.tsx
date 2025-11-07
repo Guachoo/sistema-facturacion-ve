@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,10 +63,12 @@ export function CustomerAnalysisPage() {
   const getFilteredInvoices = () => {
     const now = new Date();
     let startDate: Date;
+    let endDate: Date = now; // Por defecto hasta ahora
 
     switch (period) {
       case 'thisYear':
         startDate = startOfYear(now);
+        endDate = endOfYear(now); // Usar endOfYear para el año completo
         break;
       case 'last6months':
         startDate = subMonths(now, 6);
@@ -76,9 +78,13 @@ export function CustomerAnalysisPage() {
         break;
       default:
         startDate = startOfYear(now);
+        endDate = endOfYear(now);
     }
 
-    return invoices.filter(invoice => new Date(invoice.fecha) >= startDate);
+    return invoices.filter(invoice => {
+      const invoiceDate = new Date(invoice.fecha);
+      return invoiceDate >= startDate && invoiceDate <= endDate;
+    });
   };
 
   const filteredInvoices = getFilteredInvoices();
@@ -428,13 +434,30 @@ export function CustomerAnalysisPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono">{formatVES(customer.totalCompras)}</TableCell>
+                        <TableCell className="font-mono">
+                          <div>{formatVES(customer.totalCompras)}</div>
+                          {bcvRate && (
+                            <div className="text-xs text-muted-foreground">
+                              {formatUSD(customer.totalCompras / bcvRate.rate)}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{customer.numeroFacturas}</TableCell>
-                        <TableCell className="font-mono">{formatVES(customer.ticketPromedio)}</TableCell>
+                        <TableCell className="font-mono">
+                          <div>{formatVES(customer.ticketPromedio)}</div>
+                          {bcvRate && (
+                            <div className="text-xs text-muted-foreground">
+                              {formatUSD(customer.ticketPromedio / bcvRate.rate)}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {customer.ultimaCompra ? (
                             <div>
-                              <div>{formatDateVE(customer.ultimaCompra)}</div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                {formatDateVE(customer.ultimaCompra)}
+                              </div>
                               <div className="text-xs text-muted-foreground">
                                 Hace {customer.diasSinComprar} días
                               </div>
@@ -467,6 +490,9 @@ export function CustomerAnalysisPage() {
                               customer.tendencia === 'Creciente' ? 'bg-green-100 text-green-800' : ''
                             }
                           >
+                            {customer.tendencia === 'Creciente' && (
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                            )}
                             {customer.tendencia}
                           </Badge>
                         </TableCell>
@@ -494,6 +520,11 @@ export function CustomerAnalysisPage() {
                           <div>
                             <div className="text-muted-foreground">Total</div>
                             <div className="font-mono">{formatVES(customer.totalCompras)}</div>
+                            {bcvRate && (
+                              <div className="text-xs text-muted-foreground">
+                                {formatUSD(customer.totalCompras / bcvRate.rate)}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <div className="text-muted-foreground">Facturas</div>
@@ -523,6 +554,9 @@ export function CustomerAnalysisPage() {
                               customer.tendencia === 'Creciente' ? 'bg-green-100 text-green-800' : ''
                             }
                           >
+                            {customer.tendencia === 'Creciente' && (
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                            )}
                             {customer.tendencia}
                           </Badge>
                         </div>

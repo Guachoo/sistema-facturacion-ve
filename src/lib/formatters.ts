@@ -37,14 +37,28 @@ export const parseVenezuelanNumber = (value: string): number => {
 
 // Format date to Venezuelan format DD/MM/YYYY
 export const formatDateVE = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return format(d, 'dd/MM/yyyy', { locale: es });
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) {
+      return 'Fecha inválida';
+    }
+    return format(d, 'dd/MM/yyyy', { locale: es });
+  } catch (error) {
+    return 'Fecha inválida';
+  }
 };
 
 // Format datetime for Venezuelan users
 export const formatDateTimeVE = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return format(d, 'dd/MM/yyyy HH:mm', { locale: es });
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) {
+      return 'Fecha/hora inválida';
+    }
+    return format(d, 'dd/MM/yyyy HH:mm', { locale: es });
+  } catch (error) {
+    return 'Fecha/hora inválida';
+  }
 };
 
 // RIF formatting and validation

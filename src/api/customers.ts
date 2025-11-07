@@ -66,6 +66,34 @@ export const useCreateCustomer = () => {
     mutationFn: async (customer: Omit<Customer, 'id'>): Promise<Customer> => {
       console.log('Creating customer with raw data:', customer);
 
+      // Import validation utilities (integrating with Phase 1)
+      const { rifValidation, validationUtils } = await import('@/lib/utils');
+      const { logger } = await import('@/lib/logger');
+
+      // Validate RIF before creating customer
+      if (!rifValidation.isValid(customer.rif)) {
+        const error = new Error(`Invalid RIF: ${customer.rif}`);
+        logger.error('customers', 'create', 'RIF validation failed', { rif: customer.rif, error });
+        throw error;
+      }
+
+      // Validate required fields
+      const validation = validationUtils.hasRequiredFields(customer, ['rif', 'razonSocial', 'domicilio']);
+      if (!validation.isValid) {
+        const error = new Error(`Missing required fields: ${validation.missingFields.join(', ')}`);
+        logger.error('customers', 'create', 'Required fields validation failed', validation);
+        throw error;
+      }
+
+      // Validate email if provided
+      if (customer.email && !validationUtils.isValidEmail(customer.email)) {
+        const error = new Error(`Invalid email format: ${customer.email}`);
+        logger.error('customers', 'create', 'Email validation failed', { email: customer.email });
+        throw error;
+      }
+
+      logger.info('customers', 'create', 'Creating customer', { rif: customer.rif, razonSocial: customer.razonSocial });
+
       // Normalize all data to prevent undefined/null header issues
       const insertData = {
         rif: normalizeString(customer.rif)?.toUpperCase() || '',
@@ -77,16 +105,8 @@ export const useCreateCustomer = () => {
         tipo_contribuyente: customer.tipoContribuyente || 'ordinario',
       };
 
-      // Validate required fields
-      if (!insertData.rif) {
-        throw new Error('RIF es requerido');
-      }
-      if (!insertData.razon_social) {
-        throw new Error('Razón social es requerida');
-      }
-      if (!insertData.domicilio) {
-        throw new Error('Domicilio es requerido');
-      }
+      // Additional validation already done above, these are redundant
+      // Removed duplicate validations as they're now handled by Phase 1 utils
 
       console.log('Normalized data for Supabase:', insertData);
 
@@ -127,8 +147,15 @@ export const useCreateCustomer = () => {
 
         console.log('Customer created successfully via REST API:', createdCustomer);
 
+        // Log successful customer creation
+        logger.info('customers', 'create', 'Customer created successfully', {
+          customerId: createdCustomer.id,
+          rif: createdCustomer.rif,
+          razonSocial: createdCustomer.razon_social
+        });
+
         // Return normalized customer object
-        return {
+        const normalizedCustomer = {
           id: createdCustomer.id,
           rif: createdCustomer.rif,
           razonSocial: createdCustomer.razon_social,
@@ -141,24 +168,60 @@ export const useCreateCustomer = () => {
           updatedAt: createdCustomer.updated_at,
         };
 
-      } catch (dbError: any) {
+        // PHASE 2: Sync with TFHKA if customer is a business (has RIF starting with J or G)
+        if (normalizedCustomer.rif.startsWith('J-') || normalizedCustomer.rif.startsWith('G-')) {
+          try {
+            logger.info('customers', 'tfhka_sync', 'Syncing business customer with TFHKA', {
+              customerId: normalizedCustomer.id,
+              rif: normalizedCustomer.rif
+            });
+
+            // Prepare customer data for TFHKA
+            const tfhkaCustomerData = {
+              rif: normalizedCustomer.rif,
+              razon_social: normalizedCustomer.razonSocial,
+              direccion: normalizedCustomer.domicilio,
+              email: normalizedCustomer.email,
+              telefono: normalizedCustomer.telefono,
+              tipo_contribuyente: normalizedCustomer.tipoContribuyente
+            };
+
+            // Note: TFHKA sync would be implemented here when API is available
+            // For now, we log the intent and prepare the data structure
+            logger.info('customers', 'tfhka_sync', 'TFHKA sync prepared (API not yet connected)', {
+              tfhkaCustomerData
+            });
+
+          } catch (syncError) {
+            // Don't fail customer creation if TFHKA sync fails
+            logger.warn('customers', 'tfhka_sync', 'TFHKA sync failed but customer created', {
+              customerId: normalizedCustomer.id,
+              error: syncError
+            });
+          }
+        }
+
+        return normalizedCustomer;
+
+      } catch (dbError: unknown) {
         console.error('REST API operation failed:', dbError);
 
         // Handle specific HTTP/REST errors
-        if (dbError.message?.includes('409') || dbError.message?.includes('duplicate')) {
+        const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+        if (errorMessage?.includes('409') || errorMessage?.includes('duplicate')) {
           throw new Error(`Ya existe un cliente con el RIF: ${insertData.rif}`);
         }
 
-        if (dbError.message?.includes('401') || dbError.message?.includes('403')) {
+        if (errorMessage?.includes('401') || errorMessage?.includes('403')) {
           throw new Error('Error de permisos. Verifica la configuración de Supabase.');
         }
 
-        if (dbError.message?.includes('400')) {
+        if (errorMessage?.includes('400')) {
           throw new Error('Datos inválidos. Verifica que todos los campos estén completos.');
         }
 
         // Re-throw with original message for better debugging
-        throw new Error(dbError.message || 'Error en la operación de base de datos');
+        throw new Error(errorMessage || 'Error en la operación de base de datos');
       }
     },
     onSuccess: () => {

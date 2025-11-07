@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ import { Link } from 'react-router-dom';
 import { formatVES, formatUSD, formatDateVE } from '@/lib/formatters';
 import { useBcvRate } from '@/api/rates';
 import { useInvoices } from '@/api/invoices';
+import type { BcvRate } from '@/types';
 import { BcvRateBadge } from '@/components/ui/bcv-rate-badge';
 import { cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, subMonths, isSameMonth } from 'date-fns';
@@ -42,6 +43,7 @@ interface MonthlySales {
   totalFacturas: number;
   ticketPromedio: number;
   crecimiento: number;
+  isCurrentMonth: boolean;
 }
 
 interface ProductSales {
@@ -57,6 +59,12 @@ export function SalesAnalysisPage() {
 
   const { data: bcvRate } = useBcvRate();
   const { data: invoices = [] } = useInvoices();
+
+  // Función para formatear información de tasa BCV
+  const formatBcvRateInfo = (rate: BcvRate | undefined): string => {
+    if (!rate) return 'Tasa BCV no disponible';
+    return `${rate.rate.toFixed(2)} VES/USD (${formatDateVE(new Date(rate.date))})`;
+  };
 
   // Generar datos de ventas por mes
   const generateMonthlySales = (): MonthlySales[] => {
@@ -107,7 +115,8 @@ export function SalesAnalysisPage() {
         totalVentas,
         totalFacturas,
         ticketPromedio,
-        crecimiento
+        crecimiento,
+        isCurrentMonth: isSameMonth(date, new Date())
       });
     }
 
@@ -119,12 +128,12 @@ export function SalesAnalysisPage() {
     const productMap = new Map<string, { cantidad: number; total: number }>();
 
     invoices.forEach(invoice => {
-      if (invoice.items && Array.isArray(invoice.items)) {
-        invoice.items.forEach(item => {
+      if (invoice.lineas && Array.isArray(invoice.lineas)) {
+        invoice.lineas.forEach(item => {
           const existing = productMap.get(item.descripcion) || { cantidad: 0, total: 0 };
           productMap.set(item.descripcion, {
             cantidad: existing.cantidad + item.cantidad,
-            total: existing.total + item.monto
+            total: existing.total + item.total
           });
         });
       }
@@ -153,6 +162,9 @@ export function SalesAnalysisPage() {
   const crecimientoPromedio = monthlySales.length > 1 ?
     monthlySales.slice(1).reduce((sum, m) => sum + m.crecimiento, 0) / (monthlySales.length - 1) : 0;
 
+  // Calcular clientes únicos
+  const clientesUnicos = new Set(invoices.map(invoice => invoice.receptor.rif)).size;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -169,9 +181,28 @@ export function SalesAnalysisPage() {
             <p className="text-sm sm:text-base text-muted-foreground">
               Tendencias y patrones de facturación por período
             </p>
+            <p className="text-xs text-muted-foreground">
+              Generado: {formatDateVE(new Date())}
+            </p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-40">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formatDateVE(selectedDate)}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue />
@@ -186,6 +217,11 @@ export function SalesAnalysisPage() {
         </div>
       </div>
 
+      {/* Información adicional de tasa BCV */}
+      <div className="text-xs text-muted-foreground text-center">
+        {formatBcvRateInfo(bcvRate)}
+      </div>
+
       {/* Resumen del Período */}
       <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -198,7 +234,7 @@ export function SalesAnalysisPage() {
                 <div className="text-xs font-medium text-muted-foreground">Total del Período</div>
                 <div className="text-sm sm:text-xl md:text-2xl font-bold">{formatVES(totalPeriod)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {bcvRate && formatUSD(totalPeriod / bcvRate.rate)} USD
+                  {bcvRate?.rate ? formatUSD(totalPeriod / bcvRate.rate) + ' USD' : 'Cargando tasa...'}
                 </p>
               </div>
             </div>
@@ -264,6 +300,25 @@ export function SalesAnalysisPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="flex-shrink-0">
+                <Users className="h-4 w-4 sm:h-8 sm:w-8 text-purple-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground">Clientes Únicos</div>
+                <div className="text-sm sm:text-xl md:text-2xl font-bold text-purple-600">
+                  {clientesUnicos}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Base de clientes activa
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Ventas por Mes */}
@@ -293,9 +348,17 @@ export function SalesAnalysisPage() {
                 </TableHeader>
                 <TableBody>
                   {monthlySales.map((month, index) => (
-                    <TableRow key={`${month.month}-${month.year}`}>
+                    <TableRow
+                      key={`${month.month}-${month.year}`}
+                      className={month.isCurrentMonth ? "bg-blue-50 dark:bg-blue-950" : ""}
+                    >
                       <TableCell className="font-medium">
                         {month.month} {month.year}
+                        {month.isCurrentMonth && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            Actual
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono">{formatVES(month.totalVentas)}</TableCell>
                       <TableCell>{month.totalFacturas}</TableCell>

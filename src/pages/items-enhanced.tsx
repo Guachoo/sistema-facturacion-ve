@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,9 +53,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useItems, useCreateItem, useUpdateItem, useDeleteItem } from '@/api/items';
 import { useInventoryMovements, useCreateInventoryMovement, useInventoryStats, useInventoryAlerts } from '@/api/inventory';
+import { usePriceFormatter } from '@/hooks/use-price-formatter';
 import { MoneyInput } from '@/components/ui/money-input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { formatVES } from '@/lib/formatters';
+import { formatUSD, formatVES } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { Item, InventoryMovement } from '@/types';
@@ -87,6 +88,8 @@ const movementSchema = z.object({
 type ItemForm = z.infer<typeof itemSchema>;
 type MovementForm = z.infer<typeof movementSchema>;
 
+const USD_REFERENCE_THRESHOLD = 10;
+
 export function EnhancedItemsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -103,6 +106,8 @@ export function EnhancedItemsPage() {
   const { data: inventoryStats } = useInventoryStats();
   const { data: inventoryAlerts = [] } = useInventoryAlerts();
   const { data: movements = [] } = useInventoryMovements();
+  const { usdToVes, bcvRate: currentBcvRate } = usePriceFormatter();
+  const effectiveBcvRate = currentBcvRate || 224.38;
 
   const createMutation = useCreateItem();
   const updateMutation = useUpdateItem();
@@ -163,12 +168,45 @@ export function EnhancedItemsPage() {
     (item.stockActual === undefined || item.stockActual <= 0)
   );
 
-  const totalInventoryValue = items.reduce((sum, item) => {
-    if (item.tipo === 'producto' && item.stockActual && item.costoPromedio) {
-      return sum + (item.stockActual * item.costoPromedio);
-    }
-    return sum;
-  }, 0);
+  const inventoryTotals = useMemo(() => {
+    return items.reduce(
+      (acc, item) => {
+        if (item.tipo !== 'producto') {
+          return acc;
+        }
+
+        const stock = item.stockActual ?? 0;
+        if (!stock) {
+          return acc;
+        }
+
+        const priceVes = item.precioBase ?? 0;
+        const costVes = item.costoPromedio ?? priceVes;
+        const usdPrice = item.precioUsd ?? 0;
+        const hasUsdReference = usdPrice > 0 && priceVes > 0;
+        const historicalRate = hasUsdReference ? priceVes / usdPrice : 0;
+        const canRescale = historicalRate > USD_REFERENCE_THRESHOLD;
+
+        const unitUsd = canRescale
+          ? costVes / historicalRate
+          : effectiveBcvRate > 0
+            ? costVes / effectiveBcvRate
+            : 0;
+
+        const unitVes = canRescale
+          ? usdToVes(unitUsd, effectiveBcvRate)
+          : costVes;
+
+        acc.totalInventoryValue += unitVes * stock;
+        acc.totalInventoryValueUsd += unitUsd * stock;
+        return acc;
+      },
+      { totalInventoryValue: 0, totalInventoryValueUsd: 0 }
+    );
+  }, [items, usdToVes, effectiveBcvRate]);
+
+  const totalInventoryValue = inventoryTotals.totalInventoryValue;
+  const totalInventoryValueUsd = inventoryTotals.totalInventoryValueUsd;
 
   const onSubmit = (data: ItemForm) => {
     if (editingItem) {
@@ -499,7 +537,7 @@ export function EnhancedItemsPage() {
                 <div className="text-xs font-medium text-muted-foreground">Valor Inventario</div>
                 <div className="text-sm sm:text-xl md:text-2xl font-bold">{formatVES(totalInventoryValue)}</div>
                 <p className="text-xs text-muted-foreground">
-                  Costo promedio
+                  ≈ {formatUSD(totalInventoryValueUsd)} @ BCV {effectiveBcvRate.toFixed(2)}
                 </p>
               </div>
             </div>

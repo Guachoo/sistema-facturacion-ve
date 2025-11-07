@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -27,8 +28,9 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, User, DollarSign, Clock, CheckCircle, UserCheck } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, User, DollarSign, Clock, CheckCircle, UserCheck, Shield, ExternalLink, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '@/api/customers';
+import { useValidateCustomerRif, useSyncCustomerWithTfhka, useCustomerAuditHistory } from '@/api/customers-extended';
 import { RifInput } from '@/components/ui/rif-input';
 import { usePermissions } from '@/hooks/use-permissions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -95,8 +97,13 @@ const customerSchema = z.object({
   nombre: z.string().optional(),
   domicilio: z.string().min(1, 'Domicilio es requerido'),
   telefono: z.string().optional(),
+  telefonoMovil: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   tipoContribuyente: z.enum(['especial', 'ordinario', 'formal'], { message: 'Tipo de contribuyente es requerido' }),
+  contactoNombre: z.string().optional(),
+  contactoCargo: z.string().optional(),
+  sectorEconomico: z.string().optional(),
+  activo: z.boolean().optional(),
 });
 
 type CustomerForm = z.infer<typeof customerSchema>;
@@ -109,6 +116,10 @@ export function CustomersPage() {
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('customers');
 
+  // Fiscal validation states
+  const [rifValidationResult, setRifValidationResult] = useState<any>(null);
+  const [showTfhkaSync, setShowTfhkaSync] = useState(false);
+
   // CRM States
   const [leads, setLeads] = useState<Lead[]>(mockLeads);
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
@@ -118,11 +129,16 @@ export function CustomersPage() {
     vendedorId: '1'
   });
 
-  const { data: customers = [], isLoading } = useCustomers();
-  const { canWrite, canDelete } = usePermissions();
+  const { data: customers = [], isLoading, refetch: refetchCustomers } = useCustomers();
+  const { canRead, canWrite, canDelete } = usePermissions();
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer();
   const deleteMutation = useDeleteCustomer();
+
+  // Phase 2 fiscal hooks
+  const rifValidationMutation = useValidateCustomerRif();
+  const tfhkaSyncMutation = useSyncCustomerWithTfhka();
+  const { data: auditHistory } = useCustomerAuditHistory(editingCustomer?.id);
 
   const {
     register,
@@ -137,6 +153,28 @@ export function CustomersPage() {
       tipoContribuyente: 'ordinario',
     },
   });
+
+  const rifValue = watch('rif');
+
+  // Auto-validate RIF when it changes
+  useEffect(() => {
+    if (rifValue && rifValue.length >= 10) {
+      const timeoutId = setTimeout(() => {
+        rifValidationMutation.mutate(rifValue, {
+          onSuccess: (result) => {
+            setRifValidationResult(result);
+            setShowTfhkaSync(result.isValid && (rifValue.startsWith('J-') || rifValue.startsWith('G-')));
+          },
+          onError: () => {
+            setRifValidationResult(null);
+            setShowTfhkaSync(false);
+          }
+        });
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [rifValue, rifValidationMutation]);
 
   const filteredCustomers = customers.filter(customer =>
     customer.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
@@ -227,6 +265,19 @@ export function CustomersPage() {
     setIsDialogOpen(true);
   };
 
+  const handleView = (customer: Customer) => {
+    // Set customer as view-only (readonly mode)
+    setEditingCustomer(customer);
+    Object.entries(customer).forEach(([key, value]) => {
+      setValue(key as keyof CustomerForm, value);
+    });
+    setIsDialogOpen(true);
+    // TODO: Add a state to differentiate between view/edit mode
+    toast.info(`Viendo detalles de ${customer.razonSocial}`, {
+      description: 'Modo solo lectura. Usa el botón editar para modificar.',
+    });
+  };
+
   const handleDelete = (id: string) => {
     setCustomerToDelete(id);
     setDeleteConfirmOpen(true);
@@ -247,6 +298,64 @@ export function CustomersPage() {
     }
   };
 
+  // TFHKA sync function
+  const handleTfhkaSync = () => {
+    if (!rifValue) return;
+
+    tfhkaSyncMutation.mutate(rifValue, {
+      onSuccess: (syncedData) => {
+        // Pre-fill form with TFHKA data
+        if (syncedData.razonSocial) setValue('razonSocial', syncedData.razonSocial);
+        if (syncedData.domicilio) setValue('domicilio', syncedData.domicilio);
+        if (syncedData.telefono) setValue('telefono', syncedData.telefono);
+        if (syncedData.email) setValue('email', syncedData.email);
+
+        toast.success('Datos sincronizados con TFHKA', {
+          description: 'La información se ha actualizado automáticamente'
+        });
+      },
+      onError: (error: any) => {
+        toast.error('Error en sincronización TFHKA', {
+          description: error.message || 'No se pudo sincronizar con el servicio fiscal'
+        });
+      }
+    });
+  };
+
+  // Helper functions for RIF validation display
+  const getRifStatusIcon = () => {
+    if (rifValidationMutation.isPending) {
+      return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+    }
+    if (rifValidationResult?.isValid) {
+      return <CheckCircle className="h-4 w-4 text-green-600" />;
+    }
+    if (rifValidationResult?.isValid === false) {
+      return <AlertTriangle className="h-4 w-4 text-red-600" />;
+    }
+    return null;
+  };
+
+  const getRifStatusBadge = () => {
+    if (!rifValidationResult) return null;
+
+    if (rifValidationResult.isValid) {
+      return (
+        <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          RIF Válido
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200">
+        <AlertTriangle className="h-3 w-3 mr-1" />
+        RIF Inválido
+      </Badge>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -258,6 +367,15 @@ export function CustomersPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => refetchCustomers()}
+            disabled={isLoading}
+            title="Actualizar lista de clientes"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             {canWrite('clientes') && activeTab === 'customers' && (
               <DialogTrigger asChild>
@@ -279,12 +397,61 @@ export function CustomersPage() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-1 sm:px-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="rif">RIF *</Label>
-                    <RifInput
-                      id="rif"
-                      value={watch('rif') || ''}
-                      onChange={(value) => setValue('rif', value)}
-                    />
+                    <Label htmlFor="rif" className="flex items-center gap-2">
+                      RIF *
+                      {getRifStatusIcon()}
+                    </Label>
+                    <div className="flex gap-2">
+                      <RifInput
+                        id="rif"
+                        value={watch('rif') || ''}
+                        onChange={(value) => setValue('rif', value)}
+                        className={rifValidationResult?.isValid === false ? 'border-red-500' : ''}
+                      />
+                      {showTfhkaSync && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleTfhkaSync}
+                          disabled={tfhkaSyncMutation.isPending}
+                          className="shrink-0"
+                        >
+                          {tfhkaSyncMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ExternalLink className="h-4 w-4" />
+                          )}
+                          TFHKA
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* RIF Validation Results */}
+                    <div className="flex flex-wrap gap-2">
+                      {getRifStatusBadge()}
+                      {rifValidationResult?.details?.rifType && (
+                        <Badge variant="outline">
+                          {rifValidationResult.details.rifType}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* RIF Suggestions */}
+                    {rifValidationResult?.suggestions && rifValidationResult.suggestions.length > 0 && (
+                      <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Sugerencias de RIF</AlertTitle>
+                        <AlertDescription>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {rifValidationResult.suggestions.map((suggestion: string, index: number) => (
+                              <li key={index}>{suggestion}</li>
+                            ))}
+                          </ul>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {errors.rif && (
                       <p className="text-sm text-destructive">{errors.rif.message}</p>
                     )}
@@ -324,7 +491,7 @@ export function CustomersPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="telefono">Teléfono</Label>
+                    <Label htmlFor="telefono">Teléfono Principal</Label>
                     <Input
                       id="telefono"
                       {...register('telefono')}
@@ -332,16 +499,45 @@ export function CustomersPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="telefonoMovil">Teléfono Móvil</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      {...register('email')}
-                      placeholder="cliente@empresa.com"
+                      id="telefonoMovil"
+                      {...register('telefonoMovil')}
+                      placeholder="+58-414-1234567"
                     />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email.message}</p>
-                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...register('email')}
+                    placeholder="cliente@empresa.com"
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-destructive">{errors.email.message}</p>
+                  )}
+                </div>
+
+                {/* Contact Person Fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contactoNombre">Persona de Contacto</Label>
+                    <Input
+                      id="contactoNombre"
+                      {...register('contactoNombre')}
+                      placeholder="Nombre del contacto principal"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactoCargo">Cargo</Label>
+                    <Input
+                      id="contactoCargo"
+                      {...register('contactoCargo')}
+                      placeholder="ej. Gerente General"
+                    />
                   </div>
                 </div>
 
@@ -364,6 +560,46 @@ export function CustomersPage() {
                     <p className="text-sm text-destructive">{errors.tipoContribuyente.message}</p>
                   )}
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sectorEconomico">Sector Económico</Label>
+                  <Input
+                    id="sectorEconomico"
+                    {...register('sectorEconomico')}
+                    placeholder="ej. Tecnología, Servicios, Manufacturas"
+                  />
+                </div>
+
+                {/* Audit History Section - Only show when editing existing customer */}
+                {editingCustomer && auditHistory && auditHistory.length > 0 && (
+                  <div className="mt-6 pt-4 border-t">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Historial de Cambios
+                    </h4>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {auditHistory.slice(0, 5).map((entry: any, index: number) => (
+                        <div key={index} className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                          <div className="flex justify-between items-start">
+                            <span className="font-medium">{entry.action || 'Modificación'}</span>
+                            <span>{entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Fecha no disponible'}</span>
+                          </div>
+                          {entry.details && (
+                            <div className="mt-1">{entry.details}</div>
+                          )}
+                          {entry.user && (
+                            <div className="text-xs opacity-75">Por: {entry.user}</div>
+                          )}
+                        </div>
+                      ))}
+                      {auditHistory.length > 5 && (
+                        <div className="text-xs text-center text-muted-foreground py-1">
+                          ... y {auditHistory.length - 5} cambios más
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={handleCloseDialog}>
@@ -537,6 +773,7 @@ export function CustomersPage() {
                     <TableHead>Razón Social</TableHead>
                     <TableHead>Domicilio</TableHead>
                     <TableHead>Contacto</TableHead>
+                    <TableHead>Estado Fiscal</TableHead>
                     <TableHead>Características</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
@@ -544,13 +781,13 @@ export function CustomersPage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         Cargando clientes...
                       </TableCell>
                     </TableRow>
                   ) : filteredCustomers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         No se encontraron clientes
                       </TableCell>
                     </TableRow>
@@ -582,6 +819,23 @@ export function CustomersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <div className="flex flex-col gap-1">
+                            {/* RIF Validation Status */}
+                            <Badge variant="secondary" className="text-xs bg-green-50 text-green-700">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              RIF Válido
+                            </Badge>
+
+                            {/* TFHKA Status for business customers */}
+                            {(customer.rif.startsWith('J-') || customer.rif.startsWith('G-')) && (
+                              <Badge variant="outline" className="text-xs">
+                                <Shield className="h-3 w-3 mr-1" />
+                                TFHKA Sync
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-1">
                             {customer.esContribuyenteEspecial && (
                               <Badge variant="secondary" className="text-xs">
@@ -597,11 +851,22 @@ export function CustomersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            {canRead('clientes') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleView(customer)}
+                                title="Ver detalles del cliente"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
                             {canWrite('clientes') && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEdit(customer)}
+                                title="Editar cliente"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -611,6 +876,7 @@ export function CustomersPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDelete(customer.id!)}
+                                title="Eliminar cliente"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -657,12 +923,24 @@ export function CustomersPage() {
                           </div>
                         </div>
                         <div className="flex gap-1 ml-1">
+                          {canRead('clientes') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleView(customer)}
+                              title="Ver detalles del cliente"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          )}
                           {canWrite('clientes') && (
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0"
                               onClick={() => handleEdit(customer)}
+                              title="Editar cliente"
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -673,6 +951,7 @@ export function CustomersPage() {
                               size="sm"
                               className="h-6 w-6 p-0"
                               onClick={() => handleDelete(customer.id!)}
+                              title="Eliminar cliente"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -727,6 +1006,15 @@ export function CustomersPage() {
                       </span>
                       <Badge variant="outline">{leadsInEstado.length}</Badge>
                     </CardTitle>
+                    <CardDescription>
+                      {estado === 'nuevo' && 'Leads recién ingresados que requieren seguimiento inicial'}
+                      {estado === 'contactado' && 'Leads con los que ya se ha establecido contacto inicial'}
+                      {estado === 'calificado' && 'Leads evaluados y con potencial de conversión'}
+                      {estado === 'propuesta' && 'Leads a los que se ha enviado propuesta comercial'}
+                      {estado === 'negociacion' && 'Leads en proceso activo de negociación'}
+                      {estado === 'cerrado_ganado' && 'Leads convertidos exitosamente en clientes'}
+                      {estado === 'cerrado_perdido' && 'Leads que no se convirtieron en clientes'}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {leadsInEstado.map(lead => (

@@ -153,6 +153,7 @@ export const getDefaultPermissionsForRole = (role: string): Record<ModuleType, {
     superadmin: {
       clientes: { leer: true, escribir: true, eliminar: true },
       items: { leer: true, escribir: true, eliminar: true },
+      cotizaciones: { leer: true, escribir: true, eliminar: true },
       facturas: { leer: true, escribir: true, eliminar: true },
       reportes: { leer: true, escribir: true, eliminar: true },
       configuracion: { leer: true, escribir: true, eliminar: true },
@@ -161,6 +162,7 @@ export const getDefaultPermissionsForRole = (role: string): Record<ModuleType, {
     admin: {
       clientes: { leer: true, escribir: true, eliminar: true },
       items: { leer: true, escribir: true, eliminar: true },
+      cotizaciones: { leer: true, escribir: true, eliminar: false },
       facturas: { leer: true, escribir: true, eliminar: false },
       reportes: { leer: true, escribir: false, eliminar: false },
       configuracion: { leer: true, escribir: true, eliminar: false },
@@ -169,6 +171,7 @@ export const getDefaultPermissionsForRole = (role: string): Record<ModuleType, {
     contador: {
       clientes: { leer: true, escribir: true, eliminar: false },
       items: { leer: true, escribir: true, eliminar: false },
+      cotizaciones: { leer: true, escribir: true, eliminar: false },
       facturas: { leer: true, escribir: true, eliminar: false },
       reportes: { leer: true, escribir: false, eliminar: false },
       configuracion: { leer: false, escribir: false, eliminar: false },
@@ -177,6 +180,7 @@ export const getDefaultPermissionsForRole = (role: string): Record<ModuleType, {
     vendedor: {
       clientes: { leer: true, escribir: true, eliminar: false },
       items: { leer: true, escribir: false, eliminar: false },
+      cotizaciones: { leer: true, escribir: true, eliminar: false },
       facturas: { leer: true, escribir: true, eliminar: false },
       reportes: { leer: false, escribir: false, eliminar: false },
       configuracion: { leer: false, escribir: false, eliminar: false },
@@ -185,6 +189,7 @@ export const getDefaultPermissionsForRole = (role: string): Record<ModuleType, {
     supervisor: {
       clientes: { leer: true, escribir: true, eliminar: false },
       items: { leer: true, escribir: true, eliminar: false },
+      cotizaciones: { leer: true, escribir: true, eliminar: false },
       facturas: { leer: true, escribir: true, eliminar: false },
       reportes: { leer: true, escribir: false, eliminar: false },
       configuracion: { leer: false, escribir: false, eliminar: false },
@@ -193,6 +198,7 @@ export const getDefaultPermissionsForRole = (role: string): Record<ModuleType, {
     auditor: {
       clientes: { leer: false, escribir: false, eliminar: false },
       items: { leer: false, escribir: false, eliminar: false },
+      cotizaciones: { leer: true, escribir: false, eliminar: false },
       facturas: { leer: false, escribir: false, eliminar: false },
       reportes: { leer: true, escribir: false, eliminar: false },
       configuracion: { leer: false, escribir: false, eliminar: false },

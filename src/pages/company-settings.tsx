@@ -23,15 +23,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building, Upload, Plus, Edit, Trash2, FileText } from 'lucide-react';
+import { Building, Upload, Plus, Edit, Trash2, FileText, Globe, Settings2, CheckCircle2 } from 'lucide-react';
 import { RifInput } from '@/components/ui/rif-input';
 import { validateRIF } from '@/lib/formatters';
 import { toast } from 'sonner';
 import type { CompanySettings, ControlNumberBatch } from '@/types';
 
+// FASE 8: Esquemas extendidos para multi-empresa
 const companySchema = z.object({
   razonSocial: z.string().min(1, 'Razón social es requerida'),
   rif: z.string().min(1, 'RIF es requerido').refine(validateRIF, 'Formato de RIF inválido'),
@@ -39,27 +47,96 @@ const companySchema = z.object({
   telefonos: z.string().min(1, 'Teléfonos son requeridos'),
   email: z.string().email('Email inválido'),
   condicionesVenta: z.string().min(1, 'Condiciones de venta son requeridas'),
+  tipo: z.enum(['principal', 'sucursal']).default('principal'),
+  empresaPadreRif: z.string().optional(),
+  series: z.array(z.string()).default(['A']),
+  activa: z.boolean().default(true),
 });
 
 const batchSchema = z.object({
   rangeFrom: z.number().min(1, 'Número inicial debe ser mayor a 0'),
   rangeTo: z.number().min(1, 'Número final debe ser mayor a 0'),
+  empresaRif: z.string().min(1, 'Debe seleccionar una empresa'),
+  serie: z.string().min(1, 'Serie es requerida'),
+});
+
+const serieSchema = z.object({
+  serie: z.string().min(1, 'Serie es requerida').max(5, 'Serie no puede tener más de 5 caracteres'),
+  descripcion: z.string().min(1, 'Descripción es requerida'),
+  empresaRif: z.string().min(1, 'Debe seleccionar una empresa'),
 });
 
 type CompanyForm = z.infer<typeof companySchema>;
 type BatchForm = z.infer<typeof batchSchema>;
+type SerieForm = z.infer<typeof serieSchema>;
 
-// Mock data
-const mockCompanySettings: CompanySettings = {
-  razonSocial: 'Mi Empresa C.A.',
-  rif: 'J-12345678-9',
-  domicilioFiscal: 'Av. Principal, Edificio Torre, Piso 5, Oficina 501, Caracas 1050, Venezuela',
-  telefonos: '+58-212-1234567 / +58-414-9876543',
-  email: 'facturacion@miempresa.com',
-  condicionesVenta: 'Pago de contado. Precios incluyen IVA. Válido por 30 días.',
-};
+// Tipos extendidos para multi-empresa
+interface MultiCompanySettings extends CompanySettings {
+  id: string;
+  tipo: 'principal' | 'sucursal';
+  empresaPadreRif?: string;
+  series: string[];
+  activa: boolean;
+}
 
-const mockControlBatches: ControlNumberBatch[] = [
+interface ControlNumberBatchMulti extends ControlNumberBatch {
+  empresaRif: string;
+  serie: string;
+  empresaNombre: string;
+}
+
+interface SerieConfiguration {
+  id: string;
+  serie: string;
+  descripcion: string;
+  empresaRif: string;
+  empresaNombre: string;
+  activa: boolean;
+}
+
+// FASE 8: Mock data para multi-empresa
+const mockMultiCompanies: MultiCompanySettings[] = [
+  {
+    id: '1',
+    razonSocial: 'Corporación Principal C.A.',
+    rif: 'J-12345678-9',
+    domicilioFiscal: 'Av. Principal, Edificio Torre, Piso 5, Oficina 501, Caracas 1050, Venezuela',
+    telefonos: '+58-212-1234567 / +58-414-9876543',
+    email: 'facturacion@principal.com',
+    condicionesVenta: 'Pago de contado. Precios incluyen IVA. Válido por 30 días.',
+    tipo: 'principal',
+    series: ['A', 'B', 'FAC'],
+    activa: true,
+  },
+  {
+    id: '2',
+    razonSocial: 'Sucursal Valencia C.A.',
+    rif: 'J-87654321-0',
+    domicilioFiscal: 'Zona Industrial Norte, Valencia, Carabobo 2001, Venezuela',
+    telefonos: '+58-241-9876543 / +58-424-1234567',
+    email: 'valencia@principal.com',
+    condicionesVenta: 'Pago de contado. Precios incluyen IVA. Válido por 30 días.',
+    tipo: 'sucursal',
+    empresaPadreRif: 'J-12345678-9',
+    series: ['VAL', 'V'],
+    activa: true,
+  },
+  {
+    id: '3',
+    razonSocial: 'Filial Maracaibo S.A.',
+    rif: 'J-11223344-5',
+    domicilioFiscal: 'Av. 5 de Julio, Centro Comercial Las Delicias, Maracaibo 4001, Venezuela',
+    telefonos: '+58-261-5556666 / +58-426-7778888',
+    email: 'maracaibo@principal.com',
+    condicionesVenta: 'Pago de contado. Precios incluyen IVA. Válido por 30 días.',
+    tipo: 'sucursal',
+    empresaPadreRif: 'J-12345678-9',
+    series: ['MAR', 'M'],
+    activa: false, // Inactiva para mostrar ejemplo
+  },
+];
+
+const mockControlBatchesMulti: ControlNumberBatchMulti[] = [
   {
     id: '1',
     rangeFrom: 2025001,
@@ -67,46 +144,146 @@ const mockControlBatches: ControlNumberBatch[] = [
     active: true,
     used: 127,
     remaining: 373,
+    empresaRif: 'J-12345678-9',
+    serie: 'A',
+    empresaNombre: 'Corporación Principal C.A.',
   },
   {
     id: '2',
+    rangeFrom: 2025501,
+    rangeTo: 2025800,
+    active: false,
+    used: 45,
+    remaining: 255,
+    empresaRif: 'J-87654321-0',
+    serie: 'VAL',
+    empresaNombre: 'Sucursal Valencia C.A.',
+  },
+  {
+    id: '3',
     rangeFrom: 2024501,
     rangeTo: 2025000,
     active: false,
     used: 500,
     remaining: 0,
+    empresaRif: 'J-12345678-9',
+    serie: 'FAC',
+    empresaNombre: 'Corporación Principal C.A.',
+  },
+];
+
+const mockSeriesConfig: SerieConfiguration[] = [
+  {
+    id: '1',
+    serie: 'A',
+    descripcion: 'Serie Principal Facturas',
+    empresaRif: 'J-12345678-9',
+    empresaNombre: 'Corporación Principal C.A.',
+    activa: true,
+  },
+  {
+    id: '2',
+    serie: 'VAL',
+    descripcion: 'Serie Valencia',
+    empresaRif: 'J-87654321-0',
+    empresaNombre: 'Sucursal Valencia C.A.',
+    activa: true,
+  },
+  {
+    id: '3',
+    serie: 'FAC',
+    descripcion: 'Serie Facturas Especiales',
+    empresaRif: 'J-12345678-9',
+    empresaNombre: 'Corporación Principal C.A.',
+    activa: true,
+  },
+  {
+    id: '4',
+    serie: 'MAR',
+    descripcion: 'Serie Maracaibo',
+    empresaRif: 'J-11223344-5',
+    empresaNombre: 'Filial Maracaibo S.A.',
+    activa: false,
   },
 ];
 
 export function CompanySettingsPage() {
-  const [companySettings, setCompanySettings] = useState<CompanySettings>(mockCompanySettings);
-  const [controlBatches, setControlBatches] = useState<ControlNumberBatch[]>(mockControlBatches);
-  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
-  const [editingBatch, setEditingBatch] = useState<ControlNumberBatch | null>(null);
+  // FASE 8: Estado extendido para multi-empresa
+  const [multiCompanies, setMultiCompanies] = useState<MultiCompanySettings[]>(mockMultiCompanies);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(mockMultiCompanies[0].id);
+  const [controlBatchesMulti, setControlBatchesMulti] = useState<ControlNumberBatchMulti[]>(mockControlBatchesMulti);
+  const [seriesConfig, setSeriesConfig] = useState<SerieConfiguration[]>(mockSeriesConfig);
 
+  // Diálogos
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [isCompanyDialogOpen, setIsCompanyDialogOpen] = useState(false);
+  const [isSerieDialogOpen, setIsSerieDialogOpen] = useState(false);
+
+  // Estados de edición
+  const [editingBatch, setEditingBatch] = useState<ControlNumberBatchMulti | null>(null);
+  const [editingCompany, setEditingCompany] = useState<MultiCompanySettings | null>(null);
+  const [editingSerie, setEditingSerie] = useState<SerieConfiguration | null>(null);
+
+  // Empresa seleccionada
+  const selectedCompany = multiCompanies.find(company => company.id === selectedCompanyId) || multiCompanies[0];
+
+  // FASE 8: Forms extendidos para multi-empresa
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    reset: resetCompany,
     formState: { errors },
   } = useForm<CompanyForm>({
     resolver: zodResolver(companySchema),
-    defaultValues: companySettings,
+    defaultValues: selectedCompany,
   });
 
   const {
     register: registerBatch,
     handleSubmit: handleSubmitBatch,
     reset: resetBatch,
+    setValue: setValueBatch,
     formState: { errors: batchErrors },
   } = useForm<BatchForm>({
     resolver: zodResolver(batchSchema),
   });
 
+  const {
+    register: registerSerie,
+    handleSubmit: handleSubmitSerie,
+    reset: resetSerie,
+    setValue: setValueSerie,
+    formState: { errors: serieErrors },
+  } = useForm<SerieForm>({
+    resolver: zodResolver(serieSchema),
+  });
+
+  // FASE 8: Handlers extendidos para multi-empresa
   const onSubmitCompany = (data: CompanyForm) => {
-    setCompanySettings(data);
-    toast.success('Configuración de empresa actualizada correctamente');
+    if (editingCompany) {
+      // Editar empresa existente
+      setMultiCompanies(companies =>
+        companies.map(company =>
+          company.id === editingCompany.id
+            ? { ...company, ...data, id: editingCompany.id }
+            : company
+        )
+      );
+      setEditingCompany(null);
+      toast.success('Empresa actualizada correctamente');
+    } else {
+      // Nueva empresa
+      const newCompany: MultiCompanySettings = {
+        ...data,
+        id: Date.now().toString(),
+      };
+      setMultiCompanies(companies => [...companies, newCompany]);
+      toast.success('Nueva empresa creada correctamente');
+    }
+    setIsCompanyDialogOpen(false);
+    resetCompany();
   };
 
   const onSubmitBatch = (data: BatchForm) => {
@@ -115,36 +292,147 @@ export function CompanySettingsPage() {
       return;
     }
 
-    const newBatch: ControlNumberBatch = {
+    const empresa = multiCompanies.find(c => c.rif === data.empresaRif);
+    if (!empresa) {
+      toast.error('Empresa no encontrada');
+      return;
+    }
+
+    const newBatch: ControlNumberBatchMulti = {
       id: Date.now().toString(),
       rangeFrom: data.rangeFrom,
       rangeTo: data.rangeTo,
       active: true,
       used: 0,
       remaining: data.rangeTo - data.rangeFrom + 1,
+      empresaRif: data.empresaRif,
+      serie: data.serie,
+      empresaNombre: empresa.razonSocial,
     };
 
-    // Deactivate other batches
-    const updatedBatches = controlBatches.map(batch => ({ ...batch, active: false }));
-    setControlBatches([...updatedBatches, newBatch]);
+    // Desactivar otros lotes de la misma empresa y serie
+    const updatedBatches = controlBatchesMulti.map(batch => ({
+      ...batch,
+      active: batch.empresaRif === data.empresaRif && batch.serie === data.serie ? false : batch.active
+    }));
+
+    setControlBatchesMulti([...updatedBatches, newBatch]);
     setIsBatchDialogOpen(false);
     resetBatch();
-    toast.success('Lote de números de control creado correctamente');
+    toast.success(`Lote de números de control creado para ${empresa.razonSocial} - Serie ${data.serie}`);
   };
 
+  const onSubmitSerie = (data: SerieForm) => {
+    const empresa = multiCompanies.find(c => c.rif === data.empresaRif);
+    if (!empresa) {
+      toast.error('Empresa no encontrada');
+      return;
+    }
+
+    if (editingSerie) {
+      // Editar serie existente
+      setSeriesConfig(series =>
+        series.map(serie =>
+          serie.id === editingSerie.id
+            ? { ...serie, ...data, empresaNombre: empresa.razonSocial }
+            : serie
+        )
+      );
+      setEditingSerie(null);
+      toast.success('Serie actualizada correctamente');
+    } else {
+      // Nueva serie
+      const newSerie: SerieConfiguration = {
+        ...data,
+        id: Date.now().toString(),
+        empresaNombre: empresa.razonSocial,
+        activa: true,
+      };
+      setSeriesConfig(series => [...series, newSerie]);
+      toast.success(`Nueva serie ${data.serie} creada para ${empresa.razonSocial}`);
+    }
+    setIsSerieDialogOpen(false);
+    resetSerie();
+  };
+
+  // FASE 8: Handlers adicionales para multi-empresa
   const handleDeleteBatch = (id: string) => {
-    setControlBatches(batches => batches.filter(batch => batch.id !== id));
+    setControlBatchesMulti(batches => batches.filter(batch => batch.id !== id));
     toast.success('Lote eliminado correctamente');
   };
 
   const handleActivateBatch = (id: string) => {
-    setControlBatches(batches =>
+    const batchToActivate = controlBatchesMulti.find(batch => batch.id === id);
+    if (!batchToActivate) return;
+
+    setControlBatchesMulti(batches =>
       batches.map(batch => ({
         ...batch,
-        active: batch.id === id,
+        active: batch.empresaRif === batchToActivate.empresaRif && batch.serie === batchToActivate.serie
+          ? batch.id === id
+          : batch.active
       }))
     );
     toast.success('Lote activado correctamente');
+  };
+
+  const handleDeleteCompany = (id: string) => {
+    const company = multiCompanies.find(c => c.id === id);
+    if (!company) return;
+
+    setMultiCompanies(companies => companies.filter(company => company.id !== id));
+    // También eliminar lotes y series relacionados
+    setControlBatchesMulti(batches => batches.filter(batch => batch.empresaRif !== company.rif));
+    setSeriesConfig(series => series.filter(serie => serie.empresaRif !== company.rif));
+
+    if (selectedCompanyId === id && multiCompanies.length > 1) {
+      const remaining = multiCompanies.filter(c => c.id !== id);
+      setSelectedCompanyId(remaining[0].id);
+    }
+
+    toast.success(`Empresa ${company.razonSocial} eliminada correctamente`);
+  };
+
+  const handleToggleCompanyActive = (id: string) => {
+    setMultiCompanies(companies =>
+      companies.map(company =>
+        company.id === id
+          ? { ...company, activa: !company.activa }
+          : company
+      )
+    );
+    const company = multiCompanies.find(c => c.id === id);
+    toast.success(`Empresa ${company?.razonSocial} ${company?.activa ? 'desactivada' : 'activada'} correctamente`);
+  };
+
+  const handleDeleteSerie = (id: string) => {
+    const serie = seriesConfig.find(s => s.id === id);
+    setSeriesConfig(series => series.filter(serie => serie.id !== id));
+    toast.success(`Serie ${serie?.serie} eliminada correctamente`);
+  };
+
+  const handleToggleSerieActive = (id: string) => {
+    setSeriesConfig(series =>
+      series.map(serie =>
+        serie.id === id
+          ? { ...serie, activa: !serie.activa }
+          : serie
+      )
+    );
+    const serie = seriesConfig.find(s => s.id === id);
+    toast.success(`Serie ${serie?.serie} ${serie?.activa ? 'desactivada' : 'activada'} correctamente`);
+  };
+
+  const handleEditCompany = (company: MultiCompanySettings) => {
+    setEditingCompany(company);
+    resetCompany(company);
+    setIsCompanyDialogOpen(true);
+  };
+
+  const handleEditSerie = (serie: SerieConfiguration) => {
+    setEditingSerie(serie);
+    resetSerie(serie);
+    setIsSerieDialogOpen(true);
   };
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

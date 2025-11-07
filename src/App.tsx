@@ -15,11 +15,27 @@ import { InvoiceWizardPage } from '@/pages/invoice-wizard';
 import { ReportsPage } from '@/pages/reports';
 import { SalesBookPage } from '@/pages/reports/sales-book';
 import { IgtfReportPage } from '@/pages/reports/igtf-report';
+import { IvaMensualPage } from '@/pages/reports/iva-monthly';
+import { FiscalAnalysisPage } from '@/pages/reports/fiscal-analysis';
 import SalesAnalysisPage from '@/pages/reports/sales-analysis';
 import CustomerAnalysisPage from '@/pages/reports/customer-analysis';
 import { CompanySettingsPage } from '@/pages/company-settings';
 import UsersPage from '@/pages/users';
 import QuotationsPage from '@/pages/quotations';
+// FASE 8: Imports para multi-empresa
+import { MultiCompanySettingsPage } from '@/pages/multi-company-settings';
+import { MultiCompanyUsersPage } from '@/pages/multi-company-users';
+import { BcvRatesPage } from '@/pages/bcv-rates';
+import { TfhkaAuditPage } from '@/pages/tfhka-audit';
+import DebugAuth from '@/components/debug/debug-auth';
+import { DebitNoteTest } from '@/debug/debit-note-test';
+import { SettingsPage } from '@/pages/settings';
+// FASE 9: Import del dashboard de auditoría
+import { AuditDashboardPage } from '@/pages/audit-dashboard';
+// FASE 10: Imports para integración y documentación
+import { WebhookManagementPage } from '@/pages/webhook-management';
+import { ApiDocumentationPage } from '@/pages/api-documentation';
+import { UserGuidesPage } from '@/pages/user-guides';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -75,10 +91,26 @@ function AppRoutes() {
         <Route path="reportes" element={<ReportsPage />} />
         <Route path="reportes/libro-ventas" element={<SalesBookPage />} />
         <Route path="reportes/igtf" element={<IgtfReportPage />} />
+        <Route path="reportes/iva-mensual" element={<IvaMensualPage />} />
+        <Route path="reportes/analisis-fiscal" element={<FiscalAnalysisPage />} />
         <Route path="reportes/analisis-ventas" element={<SalesAnalysisPage />} />
         <Route path="reportes/analisis-clientes" element={<CustomerAnalysisPage />} />
-        <Route path="configuracion/empresa" element={<CompanySettingsPage />} />
+        <Route path="configuracion" element={<SettingsPage />} />
+        <Route path="configuracion/tasas-bcv" element={<BcvRatesPage />} />
+        <Route path="auditoria/tfhka" element={<TfhkaAuditPage />} />
+        {/* FASE 9: Ruta del dashboard de auditoría */}
+        <Route path="auditoria/dashboard" element={<AuditDashboardPage />} />
+        {/* FASE 10: Rutas para integración y documentación */}
+        <Route path="integraciones/webhooks" element={<WebhookManagementPage />} />
+        <Route path="integraciones/api-docs" element={<ApiDocumentationPage />} />
+        <Route path="ayuda/guias" element={<UserGuidesPage />} />
         <Route path="usuarios" element={<UsersPage />} />
+        {/* FASE 8: Rutas para multi-empresa */}
+        <Route path="multi-empresa" element={<MultiCompanySettingsPage />} />
+        <Route path="multi-empresa/configuracion" element={<MultiCompanySettingsPage />} />
+        <Route path="multi-empresa/usuarios" element={<MultiCompanyUsersPage />} />
+        <Route path="debug/auth" element={<DebugAuth />} />
+        <Route path="debug/debit-note" element={<DebitNoteTest />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

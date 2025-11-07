@@ -10,7 +10,7 @@ export const useKeyboardShortcuts = () => {
       const activeElement = document.activeElement;
       const isInputFocused = activeElement?.tagName === 'INPUT' ||
                             activeElement?.tagName === 'TEXTAREA' ||
-                            activeElement?.contentEditable === 'true';
+                            (activeElement as HTMLElement)?.contentEditable === 'true';
 
       if (isInputFocused || !event.key) return;
 

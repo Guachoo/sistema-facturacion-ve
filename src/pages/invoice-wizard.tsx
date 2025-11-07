@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,13 +47,16 @@ import {
   Check
 } from 'lucide-react';
 import { useCustomers, useCreateCustomer } from '@/api/customers';
+import { useValidateCustomerRif, useSyncCustomerWithTfhka } from '@/api/customers-extended';
 import { useItems } from '@/api/items';
 import { useCreateInvoice } from '@/api/invoices';
-import { useBcvRate } from '@/api/rates';
+import { useCreateFiscalInvoice } from '@/api/invoices-extended';
+import { useBcvRate, useSealBcvRate } from '@/api/rates';
 import { MoneyInput } from '@/components/ui/money-input';
 import { RifInput } from '@/components/ui/rif-input';
 import { BcvRateBadge } from '@/components/ui/bcv-rate-badge';
 import { formatVES, formatUSD, calculateIVA, calculateIGTF, validateRIF } from '@/lib/formatters';
+import { usePriceFormatter } from '@/hooks/use-price-formatter';
 import { toast } from 'sonner';
 import type { Customer, Item, InvoiceLine, Payment, Invoice } from '@/types';
 
@@ -75,6 +78,7 @@ const STEPS = [
 ];
 
 export function InvoiceWizardPage() {
+  const { formatPrice, formatPriceCompact, isLoadingRate } = usePriceFormatter();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -83,12 +87,25 @@ export function InvoiceWizardPage() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [itemSearch, setItemSearch] = useState('');
   const [isQuickCustomerOpen, setIsQuickCustomerOpen] = useState(false);
+  const [fiscalMode, setFiscalMode] = useState(true); // Enable fiscal validation by default
+  const [rifValidationResult, setRifValidationResult] = useState<{ isValid: boolean; message: string } | null>(null);
+  const [tfhkaSync, setTfhkaSync] = useState<{ synced: boolean; data?: Record<string, unknown> } | null>(null);
+  const [fiscalValidationErrors, setFiscalValidationErrors] = useState<string[]>([]);
+  const [sealedRate, setSealedRate] = useState<{ rate: number; sealId: string } | null>(null);
 
   const { data: customers = [] } = useCustomers();
   const { data: items = [] } = useItems();
   const { data: bcvRate } = useBcvRate();
+  // Fiscal analytics and info hooks for future use
+  // const { data: bcvAnalytics } = useBcvRateAnalytics();
+  // const { data: itemsFiscalInfo = [] } = useItemsFiscalInfo();
   const createInvoiceMutation = useCreateInvoice();
+  const createFiscalInvoiceMutation = useCreateFiscalInvoice();
   const createCustomerMutation = useCreateCustomer();
+  const validateRifMutation = useValidateCustomerRif();
+  const syncTfhkaMutation = useSyncCustomerWithTfhka();
+  const sealBcvRateMutation = useSealBcvRate();
+  // const seniatCodeSuggestionsMutation = useSeniatCodeSuggestions();
 
   const {
     register: registerCustomer,
@@ -120,7 +137,7 @@ export function InvoiceWizardPage() {
   const totalIva = invoiceLines.reduce((sum, line) => sum + line.montoIva, 0);
   const totalIgtf = payments.reduce((sum, payment) => sum + (payment.montoIgtf || 0), 0);
   const total = subtotal + totalIva + totalIgtf;
-  const totalUsdReferencia = bcvRate ? total / bcvRate.rate : 0;
+  const totalUsdReferencia = bcvRate?.rate ? total / bcvRate.rate : 0;
 
   const addInvoiceLine = (item: Item) => {
     const existingLine = invoiceLines.find(line => line.itemId === item.id);
@@ -131,6 +148,7 @@ export function InvoiceWizardPage() {
       const montoIva = item.ivaAplica ? calculateIVA(baseImponible) : 0;
       
       const newLine: InvoiceLine = {
+        id: crypto.randomUUID(),
         itemId: item.id!,
         codigo: item.codigo,
         descripcion: item.descripcion,
@@ -138,7 +156,10 @@ export function InvoiceWizardPage() {
         precioUnitario: item.precioBase,
         descuento: 0,
         baseImponible,
+        alicuotaIva: item.ivaAplica ? 16 : 0,
         montoIva,
+        total: baseImponible + montoIva,
+        item,
       };
       
       setInvoiceLines([...invoiceLines, newLine]);
@@ -157,7 +178,9 @@ export function InvoiceWizardPage() {
           return {
             ...updatedLine,
             baseImponible,
+            alicuotaIva: item?.ivaAplica ? 16 : 0,
             montoIva,
+            total: baseImponible + montoIva,
           };
         }
         return line;
@@ -195,8 +218,120 @@ export function InvoiceWizardPage() {
     setPayments(payments => payments.filter((_, i) => i !== index));
   };
 
+  // Fiscal validation functions
+  const validateCustomerRif = async (rif: string) => {
+    if (!fiscalMode || !rif) return;
+
+    try {
+      const result = await validateRifMutation.mutateAsync(rif);
+
+      // Transform the result to match the expected interface
+      const transformedResult = {
+        isValid: result.isValid,
+        message: result.isValid
+          ? 'RIF válido'
+          : result.suggestions?.length
+            ? result.suggestions.join('. ')
+            : 'RIF inválido'
+      };
+
+      setRifValidationResult(transformedResult);
+
+      // Note: result.tfhkaData doesn't exist in the current API, removing this check
+      if (result.isValid && result.details?.rifType?.includes('Jurídica')) {
+        // Auto-trigger TFHKA sync for business customers
+        setTfhkaSync({ synced: false, data: result.details });
+      }
+    } catch (error) {
+      console.error('RIF validation failed:', error);
+      setRifValidationResult({ isValid: false, message: 'Error al validar RIF' });
+    }
+  };
+
+  const syncWithTfhka = async (customerId: string) => {
+    if (!fiscalMode) return;
+
+    try {
+      const result = await syncTfhkaMutation.mutateAsync(customerId);
+
+      // Transform the result to match the expected interface
+      const transformedResult = {
+        synced: result.success,
+        data: {
+          syncId: result.syncId,
+          message: result.message,
+          razonSocial: result.razonSocial,
+          domicilio: result.domicilio,
+          telefono: result.telefono,
+          email: result.email
+        }
+      };
+
+      setTfhkaSync(transformedResult);
+      toast.success('Cliente sincronizado con TFHKA exitosamente');
+    } catch (error) {
+      console.error('TFHKA sync failed:', error);
+      toast.error('Error al sincronizar con TFHKA');
+    }
+  };
+
+  const validateFiscalInvoice = () => {
+    const errors: string[] = [];
+
+    // Customer fiscal validation
+    if (!selectedCustomer) {
+      errors.push('Customer is required for fiscal invoice');
+    } else if (fiscalMode && rifValidationResult && !rifValidationResult.isValid) {
+      errors.push('Customer RIF is invalid');
+    }
+
+    // Items fiscal validation
+    invoiceLines.forEach((line) => {
+      const item = items.find(i => i.id === line.itemId);
+      if (fiscalMode && item) {
+        if (!item.codigoSeniat) {
+          errors.push(`Item "${item.descripcion}" missing SENIAT code`);
+        }
+        if (!item.clasificacionFiscal) {
+          errors.push(`Item "${item.descripcion}" missing fiscal classification`);
+        }
+      }
+    });
+
+    // BCV rate validation for fiscal documents
+    if (fiscalMode && !bcvRate) {
+      errors.push('BCV rate is required for fiscal invoice');
+    }
+
+    setFiscalValidationErrors(errors);
+    return errors.length === 0;
+  };
+
+  const sealBcvRateForInvoice = async (invoiceId: string) => {
+    if (!fiscalMode) return null;
+
+    try {
+      const result = await sealBcvRateMutation.mutateAsync({
+        documentId: invoiceId,
+        documentType: 'factura',
+        forceRefresh: true
+      });
+      setSealedRate({ rate: result.sealedRate.rate, sealId: result.sealId });
+      return result;
+    } catch (error) {
+      console.error('Failed to seal BCV rate:', error);
+      throw error;
+    }
+  };
+
   const onQuickCustomerSubmit = (data: QuickCustomerForm) => {
-    createCustomerMutation.mutate(data, {
+    // Transform form data to match Customer interface
+    const customerData = {
+      ...data,
+      tipoContribuyente: data.esContribuyenteEspecial ? 'especial' : 'ordinario'
+    } as Omit<Customer, 'id'>;
+
+    createCustomerMutation.mutate(customerData, {
       onSuccess: (newCustomer) => {
         setSelectedCustomer(newCustomer);
         setIsQuickCustomerOpen(false);
@@ -224,6 +359,14 @@ export function InvoiceWizardPage() {
 
   const handleNext = () => {
     if (canProceedToStep(currentStep + 1)) {
+      // If moving to final step and fiscal mode is enabled, validate fiscal requirements
+      if (currentStep === 3 && fiscalMode) {
+        if (!validateFiscalInvoice()) {
+          toast.error('Fix fiscal validation errors before proceeding to final review');
+          return;
+        }
+      }
+
       setCurrentStep(currentStep + 1);
     } else {
       toast.error('Completa todos los campos requeridos antes de continuar');
@@ -234,39 +377,89 @@ export function InvoiceWizardPage() {
     setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmitInvoice = () => {
+  const handleSubmitInvoice = async () => {
     if (!selectedCustomer || !bcvRate) return;
 
-    const invoiceData: Omit<Invoice, 'id' | 'numero' | 'numeroControl'> = {
-      fecha: new Date().toISOString(),
-      emisor: {
-        nombre: 'Axiona, C.A.',
-        rif: 'J-12345678-9',
-        domicilio: 'Caracas, Venezuela'
-      },
-      receptor: selectedCustomer,
-      lineas: invoiceLines,
-      pagos: payments,
-      subtotal,
-      montoIva: totalIva,
-      montoIgtf: totalIgtf,
-      total,
-      totalUsdReferencia,
-      tasaBcv: bcvRate.rate,
-      fechaTasaBcv: bcvRate.date,
-      canal: 'digital',
-      estado: 'emitida',
-    };
+    // Validate fiscal requirements if fiscal mode is enabled
+    if (fiscalMode && !validateFiscalInvoice()) {
+      toast.error('Please fix fiscal validation errors before proceeding');
+      return;
+    }
 
-    createInvoiceMutation.mutate(invoiceData, {
-      onSuccess: (invoice) => {
+    try {
+      let invoice: Invoice;
+
+      if (fiscalMode) {
+        // Prepare data for fiscal invoice creation
+        const fiscalInvoiceData = {
+          customer: selectedCustomer,
+          lines: invoiceLines.map(line => ({
+            item: line.item,
+            cantidad: line.cantidad,
+            precioUnitario: line.precioUnitario,
+            descuento: line.descuento,
+          })),
+          payments: payments,
+          notes: undefined,
+          serie: undefined,
+        };
+
+        invoice = await new Promise<Invoice>((resolve, reject) => {
+          createFiscalInvoiceMutation.mutate(fiscalInvoiceData, {
+            onSuccess: (result) => resolve(result.invoice),
+            onError: reject,
+          });
+        });
+      } else {
+        // Prepare data for standard invoice creation
+        const standardInvoiceData: Omit<Invoice, 'id' | 'numero' | 'numeroControl'> = {
+          fecha: new Date().toISOString(),
+          emisor: {
+            nombre: 'Axiona, C.A.',
+            rif: 'J-12345678-9',
+            domicilio: 'Caracas, Venezuela'
+          },
+          receptor: selectedCustomer,
+          lineas: invoiceLines,
+          pagos: payments,
+          subtotal,
+          baseImponible: subtotal, // Base gravable para IVA (igual al subtotal)
+          montoIva: totalIva,
+          montoIgtf: totalIgtf,
+          total,
+          totalUsdReferencia,
+          tasaBcv: bcvRate?.rate || 0,
+          fechaTasaBcv: bcvRate?.date || new Date().toISOString(),
+          canal: 'digital',
+          estado: 'emitida',
+        };
+
+        invoice = await new Promise<Invoice>((resolve, reject) => {
+          createInvoiceMutation.mutate(standardInvoiceData, {
+            onSuccess: resolve,
+            onError: reject,
+          });
+        });
+      }
+
+      // Seal BCV rate for fiscal invoices
+      if (fiscalMode && invoice.id) {
+        try {
+          await sealBcvRateForInvoice(invoice.id);
+          toast.success(`Fiscal invoice ${invoice.numero} created with sealed BCV rate`);
+        } catch (error) {
+          console.error('Failed to seal BCV rate:', error);
+          toast.warning(`Invoice ${invoice.numero} created but BCV rate sealing failed`);
+        }
+      } else {
         toast.success(`Factura ${invoice.numero} emitida correctamente`);
-        navigate('/facturas');
-      },
-      onError: () => {
-        toast.error('Error al emitir la factura');
-      },
-    });
+      }
+
+      navigate('/facturas');
+    } catch (error) {
+      console.error('Invoice creation failed:', error);
+      toast.error('Error al emitir la factura');
+    }
   };
 
   return (
@@ -279,10 +472,27 @@ export function InvoiceWizardPage() {
             Wizard de creación de factura digital
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/facturas')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Volver
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="fiscal-mode" className="text-sm font-medium">
+              Modo Fiscal
+            </Label>
+            <Button
+              id="fiscal-mode"
+              variant={fiscalMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiscalMode(!fiscalMode)}
+              className={fiscalMode ? "bg-green-600 hover:bg-green-700" : ""}
+            >
+              {fiscalMode ? <Check className="h-4 w-4 mr-2" /> : null}
+              {fiscalMode ? 'Activado' : 'Desactivado'}
+            </Button>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/facturas')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-4">
@@ -357,12 +567,14 @@ export function InvoiceWizardPage() {
                 )}
                 <Separator />
                 <div className="flex justify-between font-bold">
-                  <span>Total VES:</span>
-                  <span className="font-mono">{formatVES(total)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Ref. USD:</span>
-                  <span className="font-mono">{formatUSD(totalUsdReferencia)}</span>
+                  <span>Total:</span>
+                  <span className="font-mono">
+                    {isLoadingRate ? 'Cargando...' : formatPriceCompact({
+                      usdAmount: totalUsdReferencia,
+                      vesAmount: total,
+                      originalCurrency: 'VES'
+                    })}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -370,7 +582,45 @@ export function InvoiceWizardPage() {
         </div>
 
         {/* Main Content */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 space-y-4">
+          {/* Fiscal Validation Status */}
+          {fiscalMode && (
+            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                  Estado de Validación Fiscal
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2 w-2 rounded-full ${rifValidationResult?.isValid ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span>RIF Cliente: {rifValidationResult?.isValid ? 'Válido' : 'Pendiente'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2 w-2 rounded-full ${tfhkaSync?.synced ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                    <span>TFHKA: {tfhkaSync?.synced ? 'Sincronizado' : 'Pendiente'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2 w-2 rounded-full ${sealedRate ? 'bg-green-500' : 'bg-gray-400'}`} />
+                    <span>Tasa BCV: {sealedRate ? 'Sellada' : 'No sellada'}</span>
+                  </div>
+                </div>
+                {fiscalValidationErrors.length > 0 && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950 dark:border-red-800">
+                    <div className="text-red-800 dark:text-red-200 font-medium text-xs mb-2">Errores de Validación:</div>
+                    <ul className="text-red-700 dark:text-red-300 text-xs space-y-1">
+                      {fiscalValidationErrors.map((error, index) => (
+                        <li key={index}>• {error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>
@@ -445,19 +695,64 @@ export function InvoiceWizardPage() {
                   {selectedCustomer ? (
                     <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
                       <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold">{selectedCustomer.razonSocial}</h4>
-                            <p className="text-sm text-muted-foreground font-mono">{selectedCustomer.rif}</p>
-                            <p className="text-sm text-muted-foreground">{selectedCustomer.domicilio}</p>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-semibold">{selectedCustomer.razonSocial}</h4>
+                              <p className="text-sm text-muted-foreground font-mono">{selectedCustomer.rif}</p>
+                              <p className="text-sm text-muted-foreground">{selectedCustomer.domicilio}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              {fiscalMode && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => validateCustomerRif(selectedCustomer.rif)}
+                                  disabled={validateRifMutation.isPending}
+                                >
+                                  {validateRifMutation.isPending ? 'Validando...' : 'Validar RIF'}
+                                </Button>
+                              )}
+                              {fiscalMode && selectedCustomer.id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => syncWithTfhka(selectedCustomer.id!)}
+                                  disabled={syncTfhkaMutation.isPending}
+                                >
+                                  {syncTfhkaMutation.isPending ? 'Sincronizando...' : 'Sync TFHKA'}
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedCustomer(null)}
+                              >
+                                Cambiar
+                              </Button>
+                            </div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedCustomer(null)}
-                          >
-                            Cambiar
-                          </Button>
+
+                          {/* Fiscal Status for Selected Customer */}
+                          {fiscalMode && (
+                            <div className="border-t pt-3">
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-2 w-2 rounded-full ${rifValidationResult?.isValid ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  <span>RIF: {rifValidationResult?.isValid ? 'Válido' : rifValidationResult ? 'Inválido' : 'No validado'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-2 w-2 rounded-full ${tfhkaSync?.synced ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                                  <span>TFHKA: {tfhkaSync?.synced ? 'Sincronizado' : 'No sincronizado'}</span>
+                                </div>
+                              </div>
+                              {rifValidationResult && !rifValidationResult.isValid && (
+                                <div className="mt-2 text-xs text-red-600">
+                                  {rifValidationResult.message}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -519,6 +814,7 @@ export function InvoiceWizardPage() {
                             <TableHead>Desc. %</TableHead>
                             <TableHead>Base Imp.</TableHead>
                             <TableHead>IVA</TableHead>
+                            {fiscalMode && <TableHead>Info Fiscal</TableHead>}
                             <TableHead>Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -555,6 +851,35 @@ export function InvoiceWizardPage() {
                               </TableCell>
                               <TableCell className="font-mono">{formatVES(line.baseImponible)}</TableCell>
                               <TableCell className="font-mono">{formatVES(line.montoIva)}</TableCell>
+                              {fiscalMode && (
+                                <TableCell>
+                                  {(() => {
+                                    const item = items.find(i => i.id === line.itemId);
+                                    return (
+                                      <div className="space-y-1">
+                                        {item?.codigoSeniat && (
+                                          <div className="text-xs font-mono text-blue-600">
+                                            {item.codigoSeniat}
+                                          </div>
+                                        )}
+                                        {item?.clasificacionFiscal && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {item.clasificacionFiscal === 'gravado' ? 'IVA 16%' :
+                                             item.clasificacionFiscal === 'exento' ? 'Exento' :
+                                             item.clasificacionFiscal === 'excluido' ? 'Excluido' :
+                                             'No Sujeto'}
+                                          </Badge>
+                                        )}
+                                        {(!item?.codigoSeniat || !item?.clasificacionFiscal) && (
+                                          <div className="text-xs text-red-600">
+                                            ⚠️ Sin datos fiscales
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </TableCell>
+                              )}
                               <TableCell>
                                 <Button
                                   variant="ghost"
@@ -592,7 +917,12 @@ export function InvoiceWizardPage() {
                                 <p className="text-sm text-muted-foreground font-mono">{item.codigo}</p>
                               </div>
                               <div className="text-right">
-                                <p className="font-mono">{formatVES(item.precioBase)}</p>
+                                <p className="font-mono">
+                                  {isLoadingRate ? 'Cargando...' : formatPriceCompact({
+                                    vesAmount: item.precioBase,
+                                    originalCurrency: 'VES'
+                                  })}
+                                </p>
                                 <div className="flex gap-1">
                                   <Badge variant={item.tipo === 'producto' ? 'default' : 'secondary'}>
                                     {item.tipo}
@@ -800,12 +1130,14 @@ export function InvoiceWizardPage() {
                         )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
-                          <span>Total VES:</span>
-                          <span className="font-mono">{formatVES(total)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>Equivalencia USD (Ref.):</span>
-                          <span className="font-mono">{formatUSD(totalUsdReferencia)}</span>
+                          <span>Total:</span>
+                          <span className="font-mono">
+                            {isLoadingRate ? 'Cargando...' : formatPrice({
+                              usdAmount: totalUsdReferencia,
+                              vesAmount: total,
+                              originalCurrency: 'VES'
+                            })}
+                          </span>
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Tasa BCV: {bcvRate?.rate} VES/USD - {bcvRate?.date}
