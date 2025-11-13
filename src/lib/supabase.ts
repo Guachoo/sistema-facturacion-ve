@@ -48,8 +48,15 @@ export const supabase = createClient(
   String(supabaseAnonKey),
   {
     auth: {
-      autoRefreshToken: false, // Disable to avoid token refresh header issues
-      persistSession: false,   // Disable to avoid session header issues
+      autoRefreshToken: true,  // Habilitar para mejor UX
+      persistSession: true,    // Habilitar para mantener sesión
+      detectSessionInUrl: false, // Evitar problemas con SSR
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'axiona-facturacion'
+      }
     }
   }
 );

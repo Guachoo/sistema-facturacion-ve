@@ -57,6 +57,13 @@ export function LoginPage() {
           <CardDescription className="text-center">
             Sistema de Facturación Digital
           </CardDescription>
+          {/* Demo credentials info */}
+          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+            <p className="font-semibold mb-1">🔒 Credenciales de demo:</p>
+            <p>📧 admin@sistema.com / 🔑 admin123</p>
+            <p>📧 contador@sistema.com / 🔑 contador123</p>
+            <p>📧 vendedor@sistema.com / 🔑 vendedor123</p>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -74,7 +81,7 @@ export function LoginPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contrase�a</Label>
+              <Label htmlFor="password">Contrase�a</Label>
               <Input
                 id="password"
                 type="password"

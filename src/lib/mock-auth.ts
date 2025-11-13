@@ -1,4 +1,8 @@
 // Sistema de autenticación mock para desarrollo sin Supabase
+// USUARIOS DE PRUEBA PARA VERCEL (demo):
+// 👤 admin@sistema.com / admin123 (Super Admin)
+// 👤 contador@sistema.com / contador123 (Contador)
+// 👤 vendedor@sistema.com / vendedor123 (Vendedor)
 import { hashPassword } from '@/lib/security';
 import type { AuthResponse } from '@/types';
 
@@ -65,7 +69,16 @@ export const mockAuthenticate = async (email: string, password: string): Promise
 };
 
 export const useMockMode = () => {
-  // Verificar si estamos en modo desarrollo y Supabase no está disponible
+  // FORZAR MODO MOCK SIEMPRE - Para demostración en Vercel
+  // En una implementación real, esto vendría de una variable de entorno
+  const forceMock = true; // Cambiar a false cuando tengas Supabase real configurado
+
+  if (forceMock) {
+    console.log('🔧 Modo mock forzado activo - Usuario: admin@sistema.com, Password: admin123');
+    return true;
+  }
+
+  // Lógica original para detectar automáticamente
   const isDevelopment = import.meta.env.MODE === 'development';
   const supabaseUnavailable = !import.meta.env.VITE_SUPABASE_URL ||
                                import.meta.env.VITE_SUPABASE_URL.includes('supfddcbyfuzvxsrzwio');
