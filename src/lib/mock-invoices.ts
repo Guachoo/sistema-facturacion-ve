@@ -479,6 +479,104 @@ const BASE_MOCK_INVOICES: Invoice[] = [
     moneda: 'USD',
     canal: 'Digital',
     estado: 'EMITIDA'
+  },
+  // Nota de Débito para completar distribución de ventas
+  {
+    id: '29',
+    numero: 'ND-000001',
+    transaction_id: 'ND-2025000001',
+    numeroControl: 'ND-2025000001',
+    fecha: '2025-11-10',
+    emisor: {
+      nombre: 'Mi Empresa C.A.',
+      rif: 'J-12345678-9',
+      domicilio: 'Caracas, Venezuela'
+    },
+    receptor: {
+      id: 'cliente-002',
+      rif: 'V-27853152-6',
+      razonSocial: 'MOISES SERVICE',
+      domicilio: 'Valencia, Carabobo',
+      tipoContribuyente: 'PERSONA_NATURAL'
+    },
+    lineas: [
+      {
+        id: '1',
+        codigo: 'INT-001',
+        descripcion: 'Intereses por mora en pago',
+        cantidad: 1,
+        precioUnitario: 50.00,
+        baseImponible: 50.00,
+        montoIva: 8.00,
+        descuento: 0
+      }
+    ],
+    pagos: [
+      {
+        tipoPago: 'PENDIENTE',
+        monto: 58.00
+      }
+    ],
+    subtotal: 50.00,
+    baseImponible: 50.00,
+    montoIva: 8.00,
+    montoIgtf: 0,
+    total: 58.00,
+    totalUsdReferencia: 58.00,
+    tasaBcv: 224.38,
+    fechaTasaBcv: '2025-11-10',
+    moneda: 'USD',
+    canal: 'Digital',
+    estado: 'nota_debito'
+  },
+  // Nota de Crédito para balancear distribución
+  {
+    id: '30',
+    numero: 'NC-000001',
+    transaction_id: 'NC-2025000001',
+    numeroControl: 'NC-2025000001',
+    fecha: '2025-11-12',
+    emisor: {
+      nombre: 'Mi Empresa C.A.',
+      rif: 'J-12345678-9',
+      domicilio: 'Caracas, Venezuela'
+    },
+    receptor: {
+      id: 'cliente-003',
+      rif: 'J-74567967-7',
+      razonSocial: 'David',
+      domicilio: 'Barquisimeto, Venezuela',
+      tipoContribuyente: 'JURIDICA'
+    },
+    lineas: [
+      {
+        id: '1',
+        codigo: 'DEV-001',
+        descripcion: 'Devolución producto defectuoso',
+        cantidad: 1,
+        precioUnitario: -120.00,
+        baseImponible: -120.00,
+        montoIva: -19.20,
+        descuento: 0
+      }
+    ],
+    pagos: [
+      {
+        tipoPago: 'DEVOLUCION',
+        monto: -139.20
+      }
+    ],
+    subtotal: -120.00,
+    baseImponible: -120.00,
+    montoIva: -19.20,
+    montoIgtf: 0,
+    total: -139.20,
+    totalUsdReferencia: -139.20,
+    tasaBcv: 224.38,
+    fechaTasaBcv: '2025-11-12',
+    moneda: 'USD',
+    canal: 'Digital',
+    estado: 'nota_credito'
   }
 ];
 
