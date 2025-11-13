@@ -613,7 +613,16 @@ export const resetMockInvoicesCache = (): void => {
 export const MOCK_INVOICES = getMockInvoices();
 
 export const useMockInvoices = () => {
-  // Verificar si estamos en modo desarrollo y Supabase no está disponible
+  // FORZAR MODO MOCK SIEMPRE - Para demostración en Vercel
+  // En una implementación real, esto vendría de una variable de entorno
+  const forceMock = true; // Cambiar a false cuando tengas Supabase real configurado
+
+  if (forceMock) {
+    console.log('🔧 Modo mock de facturas forzado activo - Datos de demostración');
+    return true;
+  }
+
+  // Lógica original para detectar automáticamente
   const isDevelopment = import.meta.env.MODE === 'development';
   const supabaseUnavailable = !import.meta.env.VITE_SUPABASE_URL ||
                                import.meta.env.VITE_SUPABASE_URL.includes('supfddcbyfuzvxsrzwio');
