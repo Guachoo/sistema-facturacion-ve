@@ -172,22 +172,41 @@ export function ReportsPage() {
 
   // Calculate sales distribution by invoice state for pie chart
   const salesByState = invoices.reduce((acc, invoice) => {
-    const state = invoice.estado || 'emitida';
-    if (!acc[state]) {
-      acc[state] = { total: 0, count: 0 };
+    // Normalize state to lowercase to avoid duplicates
+    const rawState = invoice.estado || 'emitida';
+    const normalizedState = rawState.toLowerCase();
+
+    if (!acc[normalizedState]) {
+      acc[normalizedState] = { total: 0, count: 0 };
     }
-    acc[state].total += invoice.total;
-    acc[state].count += 1;
+    acc[normalizedState].total += invoice.total;
+    acc[normalizedState].count += 1;
     return acc;
   }, {} as Record<string, { total: number; count: number }>);
 
   const salesDistributionData = Object.entries(salesByState).map(([state, data]) => {
     const percentage = totalVentasVES > 0 ? Math.min((data.total / totalVentasVES) * 100, 100) : 0;
+
+    // Map normalized states to user-friendly names
+    const getStateName = (state: string): string => {
+      switch (state) {
+        case 'emitida':
+          return 'Emitidas';
+        case 'nota_credito':
+          return 'Notas de Crédito';
+        case 'nota_debito':
+          return 'Notas de Débito';
+        case 'anulada':
+          return 'Anuladas';
+        case 'pendiente':
+          return 'Pendientes';
+        default:
+          return state.charAt(0).toUpperCase() + state.slice(1);
+      }
+    };
+
     return {
-      name: state === 'emitida' ? 'Emitidas' :
-            state === 'nota_credito' ? 'Notas de Crédito' :
-            state === 'nota_debito' ? 'Notas de Débito' :
-            state,
+      name: getStateName(state),
       value: data.total,
       count: data.count,
       percentage: Math.round(percentage * 10) / 10 // Round to 1 decimal place
@@ -673,18 +692,47 @@ export function ReportsPage() {
                     <TableCell>{formatDateVE(invoice.fecha)}</TableCell>
                     <TableCell className="font-mono">{formatVES(invoice.total)}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          invoice.estado === 'emitida' ? 'default' :
-                          invoice.estado === 'nota_credito' ? 'destructive' :
-                          'secondary'
-                        }
-                      >
-                        {invoice.estado === 'emitida' ? 'Emitida' :
-                         invoice.estado === 'nota_credito' ? 'Nota Crédito' :
-                         invoice.estado === 'nota_debito' ? 'Nota Débito' :
-                         invoice.estado}
-                      </Badge>
+                      {(() => {
+                        const normalizedState = (invoice.estado || 'emitida').toLowerCase();
+
+                        const getStateVariant = (state: string) => {
+                          switch (state) {
+                            case 'emitida':
+                              return 'default';
+                            case 'nota_credito':
+                              return 'destructive';
+                            case 'nota_debito':
+                              return 'outline';
+                            case 'anulada':
+                              return 'secondary';
+                            default:
+                              return 'secondary';
+                          }
+                        };
+
+                        const getStateLabel = (state: string) => {
+                          switch (state) {
+                            case 'emitida':
+                              return 'Emitida';
+                            case 'nota_credito':
+                              return 'Nota Crédito';
+                            case 'nota_debito':
+                              return 'Nota Débito';
+                            case 'anulada':
+                              return 'Anulada';
+                            case 'pendiente':
+                              return 'Pendiente';
+                            default:
+                              return state.charAt(0).toUpperCase() + state.slice(1);
+                          }
+                        };
+
+                        return (
+                          <Badge variant={getStateVariant(normalizedState)}>
+                            {getStateLabel(normalizedState)}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))
