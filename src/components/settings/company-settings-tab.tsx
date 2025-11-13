@@ -96,6 +96,10 @@ export function CompanySettingsTab() {
   const [rangeFrom, setRangeFrom] = useState<string>('');
   const [rangeTo, setRangeTo] = useState<string>('');
 
+  // Refs for file inputs
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+  const logoSecundarioInputRef = React.useRef<HTMLInputElement>(null);
+
   // Control numbers from database
   const { data: controlBatches = [], isLoading: isLoadingBatches } = useControlNumberBatches();
   const createBatchMutation = useCreateControlBatch();
@@ -138,11 +142,23 @@ export function CompanySettingsTab() {
     reset(updatedData);
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>, tipo: 'principal' | 'secundario') => {
+  const handleLogoUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>, tipo: 'principal' | 'secundario') => {
+    event.stopPropagation();
+    event.preventDefault();
+
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+      if (!validTypes.includes(file.type)) {
+        toast.error('Por favor selecciona un archivo de imagen válido (PNG, JPG)');
+        event.target.value = '';
+        return;
+      }
+
       if (file.size > 2 * 1024 * 1024) { // 2MB limit
         toast.error('El archivo no puede ser mayor a 2MB');
+        event.target.value = '';
         return;
       }
 
@@ -155,9 +171,15 @@ export function CompanySettingsTab() {
           setLogoSecundarioPreview(result);
         }
       };
+      reader.onerror = () => {
+        toast.error('Error al cargar el archivo');
+      };
       reader.readAsDataURL(file);
     }
-  };
+
+    // Clear the input value to allow selecting the same file again
+    event.target.value = '';
+  }, []);
 
   const resetForm = () => {
     reset();
@@ -351,26 +373,61 @@ export function CompanySettingsTab() {
                         alt="Logo principal"
                         className="max-h-24 mx-auto object-contain"
                       />
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logoInputRef.current?.click();
+                          }}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Cambiar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setLogoPreview(null);
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                        <p className="text-sm text-gray-500">Subir logo principal</p>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        onClick={() => setLogoPreview(null)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          logoInputRef.current?.click();
+                        }}
                       >
-                        Remover
+                        Seleccionar archivo
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Upload className="h-8 w-8 mx-auto text-gray-400" />
-                      <p className="text-sm text-gray-500">Subir logo principal</p>
                     </div>
                   )}
                   <input
+                    ref={logoInputRef}
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleLogoUpload(e, 'principal')}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    className="absolute -left-9999px opacity-0 pointer-events-none"
+                    tabIndex={-1}
+                    aria-hidden="true"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -381,7 +438,7 @@ export function CompanySettingsTab() {
               {/* Logo Secundario */}
               <div className="space-y-4">
                 <Label>Logo Secundario</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   {logoSecundarioPreview ? (
                     <div className="space-y-4">
                       <img
@@ -389,26 +446,61 @@ export function CompanySettingsTab() {
                         alt="Logo secundario"
                         className="max-h-24 mx-auto object-contain"
                       />
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            logoSecundarioInputRef.current?.click();
+                          }}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Cambiar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setLogoSecundarioPreview(null);
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                        <p className="text-sm text-gray-500">Subir logo secundario</p>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        onClick={() => setLogoSecundarioPreview(null)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          logoSecundarioInputRef.current?.click();
+                        }}
                       >
-                        Remover
+                        Seleccionar archivo
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Upload className="h-8 w-8 mx-auto text-gray-400" />
-                      <p className="text-sm text-gray-500">Subir logo secundario</p>
                     </div>
                   )}
                   <input
+                    ref={logoSecundarioInputRef}
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleLogoUpload(e, 'secundario')}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    className="absolute -left-9999px opacity-0 pointer-events-none"
+                    tabIndex={-1}
+                    aria-hidden="true"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">

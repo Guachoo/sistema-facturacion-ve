@@ -122,18 +122,43 @@ const UserForm: React.FC<UserFormProps> = (props) => {
     activo: user?.activo ?? true
   });
 
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    setFormError(null);
+
+    if (!user && password.length < 6) {
+      setFormError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if ((password || confirmPassword) && password !== confirmPassword) {
+      setFormError('Las contraseñas no coinciden.');
+      return;
+    }
+
     if (user && 'user' in props) {
       // Update - exclude email from form data since email cannot be changed
-      const { email, ...updateData } = formData;
-      console.log('Excluding email from update:', email); // Log excluded email for debugging
-      props.onSubmit(updateData);
+      const { email: _email, ...updateData } = formData;
+      const payload = {
+        ...updateData,
+        ...(password ? { password } : {})
+      };
+      props.onSubmit(payload);
     } else if ('onSubmit' in props) {
       // Create
-      props.onSubmit(formData);
+      props.onSubmit({
+        ...formData,
+        password
+      });
     }
+
+    setPassword('');
+    setConfirmPassword('');
   };
 
   return (
@@ -176,6 +201,34 @@ const UserForm: React.FC<UserFormProps> = (props) => {
           </SelectContent>
         </Select>
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">{user ? 'Nueva Contraseña (opcional)' : 'Contraseña *'}</Label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={user ? 'Déjalo en blanco para mantener la actual' : '********'}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">{user ? 'Confirmar nueva contraseña' : 'Confirmar Contraseña *'}</Label>
+        <Input
+          id="confirmPassword"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="********"
+        />
+      </div>
+
+      {formError && (
+        <Alert variant="destructive">
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex items-center space-x-2">
         <Switch

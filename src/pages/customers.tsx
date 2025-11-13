@@ -115,6 +115,7 @@ export function CustomersPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('customers');
+  const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
 
   // Fiscal validation states
   const [rifValidationResult, setRifValidationResult] = useState<any>(null);
@@ -215,8 +216,40 @@ export function CustomersPage() {
   };
 
   const convertLeadToCustomer = (lead: Lead) => {
-    // Logic to convert lead to customer would go here
-    toast.success(`Lead ${lead.nombre} convertido a cliente`);
+    // Set the converting lead state
+    setConvertingLead(lead);
+
+    // Pre-fill the customer form with lead data
+    const customerData = {
+      rif: '', // El RIF debe ser ingresado manualmente
+      razonSocial: lead.empresa,
+      nombre: lead.nombre,
+      domicilio: '', // Debe ser completado
+      telefono: lead.telefono || '',
+      telefonoMovil: '',
+      email: lead.email || '',
+      tipoContribuyente: 'ordinario' as const,
+      contactoNombre: lead.nombre,
+      contactoCargo: '',
+      sectorEconomico: '',
+      activo: true
+    };
+
+    // Reset form and set new values
+    reset();
+    setTimeout(() => {
+      Object.entries(customerData).forEach(([key, value]) => {
+        setValue(key as keyof CustomerForm, value);
+      });
+    }, 100);
+
+    // Switch to customers tab and open dialog
+    setActiveTab('customers');
+    setIsDialogOpen(true);
+
+    toast.info(`Convertir ${lead.nombre} de ${lead.empresa} a cliente`, {
+      description: 'Complete los campos requeridos (RIF y Domicilio) para finalizar la conversión'
+    });
   };
 
   const onSubmit = (data: CustomerForm) => {
@@ -236,7 +269,15 @@ export function CustomersPage() {
     } else {
       createMutation.mutate(data, {
         onSuccess: () => {
-          toast.success('Cliente creado correctamente');
+          if (convertingLead) {
+            // Remove lead from list after successful customer creation
+            setLeads(prev => prev.filter(l => l.id !== convertingLead.id));
+            toast.success(`Lead ${convertingLead.nombre} convertido exitosamente a cliente`, {
+              description: `${data.razonSocial} se ha agregado a la base de datos de clientes`
+            });
+          } else {
+            toast.success('Cliente creado correctamente');
+          }
           handleCloseDialog();
         },
         onError: (error: any) => {
@@ -254,6 +295,7 @@ export function CustomersPage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingCustomer(null);
+    setConvertingLead(null);
     reset();
   };
 
@@ -388,10 +430,10 @@ export function CustomersPage() {
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}
+                  {editingCustomer ? 'Editar Cliente' : convertingLead ? `Convertir Lead: ${convertingLead.nombre}` : 'Nuevo Cliente'}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingCustomer ? 'Modifica' : 'Completa'} la información del cliente.
+                  {editingCustomer ? 'Modifica la información del cliente.' : convertingLead ? `Completa los datos requeridos para convertir el lead de ${convertingLead.empresa} a cliente.` : 'Completa la información del cliente.'}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-1 sm:px-0">
@@ -1027,13 +1069,14 @@ export function CustomersPage() {
                             </div>
                             <div className="flex items-center gap-1 ml-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="h-6 w-6 p-0"
+                                className="h-7 px-2 text-xs"
                                 onClick={() => convertLeadToCustomer(lead)}
                                 title="Convertir a cliente"
                               >
-                                <UserCheck className="h-3 w-3" />
+                                <UserCheck className="h-3 w-3 mr-1" />
+                                Convertir
                               </Button>
                             </div>
                           </div>

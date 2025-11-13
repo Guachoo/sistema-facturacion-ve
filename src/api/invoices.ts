@@ -1,11 +1,42 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Invoice } from '@/types';
 import { generateDocumentTransactionId } from '../lib/transaction-id-generator';
+import { getMockInvoices, useMockInvoices, addMockInvoice, resetMockInvoicesCache } from '@/lib/mock-invoices';
+import {
+  validateInvoiceBeforeSave,
+  generateNextInvoiceNumber,
+  generateNextControlNumber
+} from '../lib/invoice-validation';
+
+// Función para refrescar datos mock
+export const refreshMockInvoices = () => {
+  if (useMockInvoices()) {
+    resetMockInvoicesCache();
+    console.log('🔧 Mock: Cache reseteado, próxima consulta obtendrá datos actualizados');
+    return true;
+  }
+  return false;
+};
 
 export const useInvoices = () => {
   return useQuery({
     queryKey: ['invoices'],
+    staleTime: 0, // Forzar recarga
+    cacheTime: 0, // No cachear en modo desarrollo
     queryFn: async (): Promise<Invoice[]> => {
+      // Verificar si usamos modo mock (sin Supabase)
+      if (useMockInvoices()) {
+        console.log('🔧 Usando facturas mock (sin Supabase)');
+        const mockData = getMockInvoices();
+        console.log('🔧 Mock: Datos que se van a retornar:', {
+          totalFacturas: mockData.length,
+          numerosFacturas: mockData.map(inv => inv.numero)
+        });
+        // Simular delay de red
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return mockData;
+      }
+
       console.log('Fetching invoices via REST API');
 
       // Use direct REST API to avoid supabase-js headers issues
@@ -83,14 +114,98 @@ export const useCreateInvoice = () => {
 
   return useMutation({
     mutationFn: async (invoice: Omit<Invoice, 'id' | 'numero' | 'numeroControl'>): Promise<Invoice> => {
+      // Verificar si usamos modo mock (sin Supabase)
+      if (useMockInvoices()) {
+        console.log('🔧 Creando factura mock (sin Supabase)');
+
+        // Simular delay de red
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Obtener facturas existentes para validación
+        const currentInvoices = queryClient.getQueryData<Invoice[]>(['invoices']) || getMockInvoices();
+
+        // Generar números únicos usando el sistema de validación
+        const newNumber = generateNextInvoiceNumber(currentInvoices);
+        const controlNumber = generateNextControlNumber(currentInvoices);
+
+        // Validar antes de crear
+        const validation = await validateInvoiceBeforeSave(
+          {
+            numero: newNumber,
+            numeroControl: controlNumber,
+            fecha: invoice.fecha || new Date().toISOString().split('T')[0]
+          },
+          currentInvoices
+        );
+
+        if (!validation.isValid) {
+          throw new Error(`Error de validación: ${validation.errors.join(', ')}`);
+        }
+
+        // Mostrar warnings si existen
+        if (validation.warnings.length > 0) {
+          console.warn('⚠️ Advertencias de numeración:', validation.warnings);
+        }
+
+        // Generar ID de transacción
+        const transactionId = generateDocumentTransactionId({
+          serie: 'FAC',
+          numeroDocumento: newNumber,
+          tipoDocumento: invoice.estado === 'nota_credito' ? '02' : invoice.estado === 'nota_debito' ? '03' : '01'
+        });
+
+        // Obtener el siguiente ID único
+        const maxId = currentInvoices.length > 0
+          ? Math.max(...currentInvoices.map(inv => parseInt(inv.id) || 0))
+          : 0;
+
+        // Crear nueva factura mock
+        const newInvoice: Invoice = {
+          ...invoice,
+          id: String(maxId + 1),
+          numero: newNumber,
+          numeroControl: controlNumber,
+          transaction_id: transactionId,
+          fecha: invoice.fecha || new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        // Simular éxito en TFHKA
+        console.log('🔧 Simulando éxito en TFHKA:', {
+          success: true,
+          tfhkaId: `TFHKA_${Date.now()}`,
+          qrCode: `QR_${controlNumber}`
+        });
+
+        // Agregar al cache dinámico y actualizar query cache
+        addMockInvoice(newInvoice);
+        const updatedInvoices = getMockInvoices();
+
+        console.log('🔧 Mock: Nueva factura agregada al cache dinámico:', {
+          nuevaFactura: newInvoice.numero,
+          numeroControl: newInvoice.numeroControl,
+          transactionId: newInvoice.transaction_id,
+          totalFacturas: updatedInvoices.length
+        });
+
+        // Actualizar el cache de react-query
+        queryClient.setQueryData(['invoices'], updatedInvoices);
+
+        // Invalidar para forzar re-render
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+
+        return newInvoice;
+      }
+
       console.log('Creating invoice via REST API:', invoice);
 
       // Use direct REST API to avoid supabase-js headers issues
       const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
       const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
 
-      // Generate invoice number - get last invoice number
-      const lastInvoiceResponse = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=numero&order=created_at.desc&limit=1`, {
+      // Obtener todas las facturas existentes para validación
+      const existingInvoicesResponse = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=id,numero,numero_control,fecha`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -99,17 +214,39 @@ export const useCreateInvoice = () => {
         }
       });
 
-      let lastNumber = 0;
-      if (lastInvoiceResponse.ok) {
-        const lastInvoiceData = await lastInvoiceResponse.json();
-        if (Array.isArray(lastInvoiceData) && lastInvoiceData.length > 0) {
-          const lastInvoice = lastInvoiceData[0];
-          lastNumber = lastInvoice ? parseInt(lastInvoice.numero.split('-')[1]) : 0;
-        }
+      let existingInvoices: Array<{id: string, numero: string, numeroControl: string, fecha: string}> = [];
+      if (existingInvoicesResponse.ok) {
+        const data = await existingInvoicesResponse.json();
+        existingInvoices = Array.isArray(data) ? data.map(inv => ({
+          id: inv.id,
+          numero: inv.numero,
+          numeroControl: inv.numero_control,
+          fecha: inv.fecha
+        })) : [];
       }
 
-      const newNumber = `FAC-${String(lastNumber + 1).padStart(6, '0')}`;
-      const controlNumber = `DIG-${new Date().getFullYear()}${String(lastNumber + 1).padStart(6, '0')}`;
+      // Generar números únicos usando el sistema de validación
+      const newNumber = generateNextInvoiceNumber(existingInvoices);
+      const controlNumber = generateNextControlNumber(existingInvoices);
+
+      // Validar antes de crear
+      const validation = await validateInvoiceBeforeSave(
+        {
+          numero: newNumber,
+          numeroControl: controlNumber,
+          fecha: invoice.fecha || new Date().toISOString().split('T')[0]
+        },
+        existingInvoices
+      );
+
+      if (!validation.isValid) {
+        throw new Error(`Error de validación: ${validation.errors.join(', ')}`);
+      }
+
+      // Mostrar warnings si existen
+      if (validation.warnings.length > 0) {
+        console.warn('⚠️ Advertencias de numeración:', validation.warnings);
+      }
 
       // Generate structured transaction ID for invoice
       const transactionId = generateDocumentTransactionId({

@@ -182,7 +182,7 @@ export function ReportsPage() {
   }, {} as Record<string, { total: number; count: number }>);
 
   const salesDistributionData = Object.entries(salesByState).map(([state, data]) => {
-    const percentage = totalVentasVES > 0 ? (data.total / totalVentasVES) * 100 : 0;
+    const percentage = totalVentasVES > 0 ? Math.min((data.total / totalVentasVES) * 100, 100) : 0;
     return {
       name: state === 'emitida' ? 'Emitidas' :
             state === 'nota_credito' ? 'Notas de Crédito' :
@@ -190,7 +190,7 @@ export function ReportsPage() {
             state,
       value: data.total,
       count: data.count,
-      percentage: percentage
+      percentage: Math.round(percentage * 10) / 10 // Round to 1 decimal place
     };
   }).sort((a, b) => b.value - a.value);
 
@@ -307,7 +307,7 @@ export function ReportsPage() {
             <div className="grid gap-4">
               {monthlySalesData.map((month, index) => {
                 const maxSales = Math.max(...monthlySalesData.map(m => m.ventas));
-                const percentage = maxSales > 0 ? (month.ventas / maxSales) * 100 : 0;
+                const percentage = maxSales > 0 ? Math.min((month.ventas / maxSales) * 100, 100) : 0;
 
                 return (
                   <div key={index} className="space-y-2">
@@ -318,10 +318,10 @@ export function ReportsPage() {
                         <span>{formatVES(month.ventas)}</span>
                       </div>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                       <div
                         className="bg-primary h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${percentage}%` }}
+                        style={{ width: `${Math.min(percentage, 100)}%`, maxWidth: '100%' }}
                       />
                     </div>
                     {month.ventas > 0 && (
@@ -376,7 +376,7 @@ export function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 overflow-hidden">
             {/* Pie chart visualization */}
             <div className="space-y-4">
               <div className="relative">
@@ -425,7 +425,7 @@ export function ReportsPage() {
             </div>
 
             {/* Distribution details */}
-            <div className="space-y-4">
+            <div className="space-y-4 min-w-0">
               <h4 className="font-medium">Detalle de Distribución</h4>
               {salesDistributionData.length > 0 ? (
                 <div className="space-y-3">
@@ -445,10 +445,10 @@ export function ReportsPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2">
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                         <div
                           className={`h-2 rounded-full transition-all duration-300 ${pieColors[index % pieColors.length]}`}
-                          style={{ width: `${item.percentage}%` }}
+                          style={{ width: `${Math.min(item.percentage, 100)}%`, maxWidth: '100%' }}
                         />
                       </div>
                     </div>

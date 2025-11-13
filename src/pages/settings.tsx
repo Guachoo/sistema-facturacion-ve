@@ -45,11 +45,13 @@ import { BillingSettingsTab } from '@/components/settings/billing-settings-tab';
 import { InventorySettingsTab } from '@/components/settings/inventory-settings-tab';
 import { ReportsSettingsTab } from '@/components/settings/reports-settings-tab';
 import { useSettings, useSettingsImportExport } from '@/hooks/use-settings';
+import { toast } from 'sonner';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('empresa');
   const { settings, isLoading, isSaving } = useSettings();
   const { exportSettings, importSettings, isExporting, isImporting } = useSettingsImportExport();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const tabs = [
     {
@@ -103,12 +105,43 @@ export function SettingsPage() {
     }
   ];
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+    event.preventDefault();
+
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        toast.error('Por favor selecciona un archivo JSON válido');
+        event.target.value = '';
+        return;
+      }
+
       importSettings(file);
     }
-  };
+
+    // Clear the input value to allow selecting the same file again
+    event.target.value = '';
+  }, [importSettings]);
+
+  const handleImportClick = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isImporting && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, [isImporting]);
+
+  const handleExportClick = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isExporting) {
+      exportSettings();
+    }
+  }, [isExporting, exportSettings]);
 
   const getTabStatus = (tabId: string) => {
     // Lógica para determinar el estado de completitud de cada tab
@@ -149,22 +182,27 @@ export function SettingsPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2">
           <input
+            ref={fileInputRef}
             type="file"
             accept=".json"
             onChange={handleFileUpload}
-            className="hidden"
-            id="import-settings"
+            className="absolute -left-9999px opacity-0 pointer-events-none"
+            tabIndex={-1}
+            aria-hidden="true"
           />
-          <label
-            htmlFor="import-settings"
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
+          <button
+            onClick={handleImportClick}
+            disabled={isImporting}
+            type="button"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
           >
             <Upload className="mr-2 h-4 w-4" />
             {isImporting ? 'Importando...' : 'Importar'}
-          </label>
+          </button>
           <button
-            onClick={() => exportSettings()}
+            onClick={handleExportClick}
             disabled={isExporting}
+            type="button"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
           >
             <Download className="mr-2 h-4 w-4" />
@@ -195,7 +233,11 @@ export function SettingsPage() {
                   className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-accent ${
                     activeTab === tab.id ? 'border-primary bg-primary/5' : ''
                   }`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setActiveTab(tab.id);
+                  }}
                 >
                   <div className="flex flex-col items-center space-y-2">
                     <Icon className={`h-6 w-6 ${tab.color}`} />

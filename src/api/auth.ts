@@ -3,6 +3,8 @@ import { tokenManager } from '@/lib/api-client';
 import type { AuthResponse } from '@/types';
 // FASE 9: Integración con sistema de auditoría
 import { auditSystem, generateDeviceFingerprint, getClientIP } from '@/lib/audit-system';
+import { hashPassword } from '@/lib/security';
+import { mockAuthenticate, useMockMode } from '@/lib/mock-auth';
 
 // FASE 9: Interfaces mejoradas para seguridad y auditoría
 interface LoginCredentials {
@@ -58,9 +60,25 @@ interface EnhancedUser {
   preferences?: Record<string, any>;
 }
 
+interface AuthUserRecord {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: string;
+  ultimo_acceso?: string;
+  intentos_login_fallidos?: number;
+  cuenta_bloqueada?: boolean;
+  bloqueo_hasta?: string;
+  password_hash?: string;
+  activo?: boolean;
+}
+
 // Cache para mejorar rendimiento
 const authCache = new Map<string, any>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.JQQbEn4ORkKR63fvfO0mUOo1hfFPQHgUr_9F2I0NV0E';
 
 // Funciones auxiliares de seguridad
 const getDeviceInfo = (): DeviceInfo => ({
@@ -126,215 +144,208 @@ export const useLogin = () => {
     mutationFn: async (credentials: LoginCredentials): Promise<AuthResponse> => {
       const deviceInfo = getDeviceInfo();
       const startTime = Date.now();
+      const normalizedEmail = credentials.email.trim().toLowerCase();
 
-      try {
-        // FASE 9: Verificación de rate limiting
-        if (!checkRateLimit(credentials.email)) {
+      // Verificar si usamos modo mock (sin Supabase)
+      if (useMockMode()) {
+        console.log('🔧 Usando modo de desarrollo (sin Supabase)');
+        try {
+          const authResponse = await mockAuthenticate(normalizedEmail, credentials.password);
+
+          // Log evento de seguridad
           await logSecurityEvent({
-            userId: credentials.email,
+            userId: authResponse.user.id,
+            action: 'login',
+            deviceInfo,
+            metadata: {
+              mode: 'mock_development',
+              remember_me: credentials.rememberMe || false
+            },
+            riskLevel: 'low'
+          });
+
+          // Configurar token con TTL
+          const tokenTTL = credentials.rememberMe ? undefined : 8 * 60 * 60 * 1000;
+          tokenManager.set(authResponse.token, tokenTTL);
+
+          return authResponse;
+        } catch (error) {
+          await logSecurityEvent({
+            userId: normalizedEmail,
             action: 'failed_login',
             deviceInfo,
-            metadata: { reason: 'rate_limit_exceeded' },
-            riskLevel: 'high'
+            metadata: { reason: 'invalid_credentials', mode: 'mock_development' },
+            riskLevel: 'medium'
           });
-          throw new Error('Demasiados intentos de login. Intente en 15 minutos.');
+          throw error;
         }
+      }
 
-        // Verificar cache para consultas recientes
-        const cacheKey = `user_${credentials.email}`;
-        const cachedUser = authCache.get(cacheKey);
+      if (!checkRateLimit(normalizedEmail)) {
+        await logSecurityEvent({
+          userId: normalizedEmail,
+          action: 'failed_login',
+          deviceInfo,
+          metadata: { reason: 'rate_limit_exceeded' },
+          riskLevel: 'high'
+        });
+        throw new Error('Demasiados intentos de login. Intente en 15 minutos.');
+      }
 
-        let user;
-        if (cachedUser && (Date.now() - cachedUser.timestamp) < CACHE_TTL) {
-          user = cachedUser.data;
-          console.log('🚀 Cache hit for user:', credentials.email);
-        } else {
-          // TEMPORARY: Use mock user data for demonstration
-          console.log('Using mock user data for demonstration');
+      const cacheKey = `user_${normalizedEmail}`;
+      const cachedUser = authCache.get(cacheKey);
+      let user: AuthUserRecord | null = null;
 
-          // Mock user data - matches expected database structure
-          const mockUsers = {
-            'admin@sistema.com': {
-              id: '1',
-              nombre: 'Administrador Sistema',
-              email: 'admin@sistema.com',
-              rol: 'superadmin', // Changed to superadmin for full access
-              ultimo_acceso: new Date().toISOString(),
-              intentos_login_fallidos: 0,
-              cuenta_bloqueada: false,
-              bloqueo_hasta: null
-            },
-            'demo@demo.com': {
-              id: '2',
-              nombre: 'Usuario Demo',
-              email: 'demo@demo.com',
-              rol: 'superadmin', // Also superadmin for demo purposes
-              ultimo_acceso: new Date().toISOString(),
-              intentos_login_fallidos: 0,
-              cuenta_bloqueada: false,
-              bloqueo_hasta: null
-            }
-          };
-
-          // Check if user exists in mock data
-          if (mockUsers[credentials.email as keyof typeof mockUsers]) {
-            user = mockUsers[credentials.email as keyof typeof mockUsers];
-            console.log('Mock user authenticated:', user.email);
-          } else {
-            // Simular delay de autenticación con indicador de progreso
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Try Supabase as fallback
-            try {
-              const response = await fetch(`https://supfddcbyfuzvxsrzwio.supabase.co/rest/v1/users?email=eq.${credentials.email}&activo=eq.true&select=id,nombre,email,rol,ultimo_acceso,intentos_login_fallidos,cuenta_bloqueada,bloqueo_hasta&limit=1`, {
-                headers: {
-                  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk',
-                  'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk',
-                  'Content-Type': 'application/json',
-                  'Cache-Control': 'max-age=60'
-                }
-              });
-
-              if (response.ok) {
-                const users = await response.json();
-                if (users && users.length > 0) {
-                  user = users[0];
-                } else {
-                  throw new Error('User not found in database');
-                }
-              } else {
-                throw new Error('Database connection failed');
-              }
-            } catch (dbError) {
-              await logSecurityEvent({
-                userId: credentials.email,
-                action: 'failed_login',
-                deviceInfo,
-                metadata: { reason: 'user_not_found', dbError: dbError instanceof Error ? dbError.message : 'Unknown error' },
-                riskLevel: 'medium'
-              });
-              throw new Error('Usuario no registrado. Use: admin@sistema.com o demo@demo.com para demo.');
-            }
+      if (cachedUser && (Date.now() - cachedUser.timestamp) < CACHE_TTL) {
+        user = cachedUser.data as AuthUserRecord;
+      } else {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${normalizedEmail}&select=id,nombre,email,rol,ultimo_acceso,intentos_login_fallidos,cuenta_bloqueada,bloqueo_hasta,password_hash,activo&limit=1`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=60'
           }
+        });
 
-          // Guardar en cache
-          authCache.set(cacheKey, {
-            data: user,
-            timestamp: Date.now()
+        if (!response.ok) {
+          const errorText = await response.text();
+          await logSecurityEvent({
+            userId: normalizedEmail,
+            action: 'failed_login',
+            deviceInfo,
+            metadata: { reason: 'server_error', error: errorText },
+            riskLevel: 'medium'
           });
+          throw new Error('No se pudo conectar con el servidor de autenticaci�n.');
         }
 
-        // FASE 9: Verificaciones de seguridad adicionales
-        if (user.cuenta_bloqueada) {
-          const bloqueoHasta = new Date(user.bloqueo_hasta || 0);
-          if (Date.now() < bloqueoHasta.getTime()) {
-            await logSecurityEvent({
-              userId: user.id,
-              action: 'failed_login',
-              deviceInfo,
-              metadata: { reason: 'account_locked', unlock_time: user.bloqueo_hasta },
-              riskLevel: 'high'
-            });
-            throw new Error(`Cuenta bloqueada hasta ${bloqueoHasta.toLocaleString()}`);
-          }
+        const users = await response.json();
+        if (!users || users.length === 0) {
+          await logSecurityEvent({
+            userId: normalizedEmail,
+            action: 'failed_login',
+            deviceInfo,
+            metadata: { reason: 'user_not_found' },
+            riskLevel: 'medium'
+          });
+          throw new Error('Usuario no registrado.');
         }
 
-        // Simular validación de contraseña (en producción sería hash comparison)
-        const isValidPassword = credentials.password === 'admin123';
-        if (!isValidPassword) {
+        user = users[0];
+        authCache.set(cacheKey, { data: user, timestamp: Date.now() });
+      }
+
+      if (!user) {
+        throw new Error('Usuario no encontrado.');
+      }
+
+      if (user.activo === false) {
+        await logSecurityEvent({
+          userId: user.id,
+          action: 'failed_login',
+          deviceInfo,
+          metadata: { reason: 'user_disabled' },
+          riskLevel: 'medium'
+        });
+        throw new Error('Usuario desactivado. Contacte al administrador.');
+      }
+
+      if (user.cuenta_bloqueada) {
+        const bloqueoHasta = new Date(user.bloqueo_hasta || 0);
+        if (Date.now() < bloqueoHasta.getTime()) {
           await logSecurityEvent({
             userId: user.id,
             action: 'failed_login',
             deviceInfo,
-            metadata: { reason: 'invalid_password' },
-            riskLevel: 'medium'
+            metadata: { reason: 'account_locked', unlock_time: user.bloqueo_hasta },
+            riskLevel: 'high'
           });
-          throw new Error('Credenciales inválidas.');
+          throw new Error(`Cuenta bloqueada hasta ${bloqueoHasta.toLocaleString()}`);
         }
-
-        // Actualizar último acceso y resetear intentos fallidos
-        const updatePromise = fetch(`https://supfddcbyfuzvxsrzwio.supabase.co/rest/v1/users?id=eq.${user.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            ultimo_acceso: new Date().toISOString(),
-            intentos_login_fallidos: 0,
-            cuenta_bloqueada: false,
-            bloqueo_hasta: null
-          })
-        });
-
-        // FASE 9: Log con sistema de auditoría mejorado
-        const loginDuration = Date.now() - startTime;
-        const clientIP = await getClientIP();
-
-        await auditSystem.log({
-          userId: user.id,
-          userEmail: user.email,
-          userName: user.nombre,
-          action: 'login',
-          riskLevel: 'low',
-          ipAddress: clientIP,
-          userAgent: navigator.userAgent,
-          deviceFingerprint: generateDeviceFingerprint(),
-          sessionId: 'session_' + Date.now(),
-          success: true,
-          duration: loginDuration,
-          metadata: {
-            remember_me: credentials.rememberMe || false,
-            last_login: user.ultimo_acceso
-          }
-        });
-
-        // Ejecutar update en paralelo con creación del token
-        const token = 'auth-token-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-
-        const authResponse: AuthResponse = {
-          token,
-          user: {
-            id: user.id,
-            nombre: user.nombre,
-            email: user.email,
-            rol: user.rol
-          }
-        };
-
-        // Guardar token con TTL si remember_me es false
-        const tokenTTL = credentials.rememberMe ? undefined : 8 * 60 * 60 * 1000; // 8 horas si no remember_me
-        tokenManager.set(authResponse.token, tokenTTL);
-
-        // Ejecutar update de forma asíncrona
-        updatePromise.catch(error => {
-          console.error('Error updating user login info:', error);
-          // No fallar el login por esto, solo log
-        });
-
-        // Limpiar rate limit cache para este usuario tras login exitoso
-        authCache.delete(`rate_limit_${credentials.email}`);
-
-        return authResponse;
-
-      } catch (error) {
-        // Log failed login attempt si no es por rate limit
-        if (!error.message.includes('Demasiados intentos')) {
-          await logSecurityEvent({
-            userId: credentials.email,
-            action: 'failed_login',
-            deviceInfo,
-            metadata: {
-              error_message: error.message,
-              login_duration_ms: Date.now() - startTime
-            },
-            riskLevel: 'medium'
-          });
-        }
-        throw error;
       }
-    },
+
+      if (!user.password_hash) {
+        await logSecurityEvent({
+          userId: user.id,
+          action: 'failed_login',
+          deviceInfo,
+          metadata: { reason: 'missing_password_hash' },
+          riskLevel: 'medium'
+        });
+        throw new Error('Usuario sin credenciales configuradas.');
+      }
+
+      const hashedInput = await hashPassword(credentials.password);
+      if (hashedInput !== user.password_hash) {
+        await logSecurityEvent({
+          userId: user.id,
+          action: 'failed_login',
+          deviceInfo,
+          metadata: { reason: 'invalid_password' },
+          riskLevel: 'medium'
+        });
+        throw new Error('Credenciales inv�lidas.');
+      }
+
+      const updatePromise = fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ultimo_acceso: new Date().toISOString(),
+          intentos_login_fallidos: 0,
+          cuenta_bloqueada: false,
+          bloqueo_hasta: null
+        })
+      });
+
+      const loginDuration = Date.now() - startTime;
+      const clientIP = await getClientIP();
+
+      await auditSystem.log({
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.nombre,
+        action: 'login',
+        riskLevel: 'low',
+        ipAddress: clientIP,
+        userAgent: navigator.userAgent,
+        deviceFingerprint: generateDeviceFingerprint(),
+        sessionId: 'session_' + Date.now(),
+        success: true,
+        duration: loginDuration,
+        metadata: {
+          remember_me: credentials.rememberMe || false,
+          last_login: user.ultimo_acceso
+        }
+      });
+
+      const token = 'auth-token-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      const authResponse: AuthResponse = {
+        token,
+        user: {
+          id: user.id,
+          nombre: user.nombre,
+          email: user.email,
+          rol: user.rol
+        }
+      };
+
+      const tokenTTL = credentials.rememberMe ? undefined : 8 * 60 * 60 * 1000;
+      tokenManager.set(authResponse.token, tokenTTL);
+
+      updatePromise.catch(error => {
+        console.error('Error updating user login info:', error);
+      });
+
+      authCache.delete(`rate_limit_${normalizedEmail}`);
+
+      return authResponse;
+    }
   });
 };
 

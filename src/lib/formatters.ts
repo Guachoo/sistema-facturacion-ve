@@ -78,6 +78,27 @@ export const validateRIF = (rif: string): boolean => {
   return rifRegex.test(rif.replace(/\s/g, ''));
 };
 
+// Test function to verify RIF validation works correctly
+export const testRIFValidation = () => {
+  const testCases = [
+    'V-27853152-6', // Persona natural venezolana
+    'E-12345678-9', // Extranjero
+    'J-40123456-7', // Persona jurídica
+    'P-87654321-2', // Pasaporte
+    'G-20000169-0', // Gobierno
+    'v-27853152-6', // Minúscula
+    'V27853152-6',  // Sin primer guión
+    'V-278531526',  // Sin último guión
+    'V278531526',   // Sin guiones
+  ];
+
+  console.log('=== Pruebas de validación RIF ===');
+  testCases.forEach(rif => {
+    const isValid = validateRIF(rif);
+    console.log(`${rif}: ${isValid ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+  });
+};
+
 // Calculate IGTF (3% on foreign currency payments outside national financial system)
 export const calculateIGTF = (amount: number, paymentType: string): number => {
   const igtfApplicableTypes = ['usd_cash', 'zelle'];

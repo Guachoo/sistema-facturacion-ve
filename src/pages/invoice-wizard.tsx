@@ -52,6 +52,7 @@ import { useItems } from '@/api/items';
 import { useCreateInvoice } from '@/api/invoices';
 import { useCreateFiscalInvoice } from '@/api/invoices-extended';
 import { useBcvRate, useSealBcvRate } from '@/api/rates';
+import { useCreateInventoryMovement } from '@/api/inventory';
 import { MoneyInput } from '@/components/ui/money-input';
 import { RifInput } from '@/components/ui/rif-input';
 import { BcvRateBadge } from '@/components/ui/bcv-rate-badge';
@@ -105,6 +106,7 @@ export function InvoiceWizardPage() {
   const validateRifMutation = useValidateCustomerRif();
   const syncTfhkaMutation = useSyncCustomerWithTfhka();
   const sealBcvRateMutation = useSealBcvRate();
+  const createInventoryMovementMutation = useCreateInventoryMovement();
   // const seniatCodeSuggestionsMutation = useSeniatCodeSuggestions();
 
   const {
@@ -141,19 +143,39 @@ export function InvoiceWizardPage() {
 
   const addInvoiceLine = (item: Item) => {
     const existingLine = invoiceLines.find(line => line.itemId === item.id);
+
+    // VALIDAR STOCK DISPONIBLE PARA PRODUCTOS
+    if (item.tipo === 'producto') {
+      const currentQuantityInInvoice = existingLine ? existingLine.cantidad : 0;
+      const stockAvailable = item.stockActual || 0;
+
+      if (currentQuantityInInvoice >= stockAvailable) {
+        toast.error(`Stock insuficiente para ${item.descripcion}. Disponible: ${stockAvailable}`);
+        return;
+      }
+    }
+
     if (existingLine) {
       updateInvoiceLine(existingLine.itemId, { cantidad: existingLine.cantidad + 1 });
     } else {
-      const baseImponible = item.precioBase;
+      // USAR PRECIOS USD CON CONVERSIÓN AUTOMÁTICA A BOLÍVARES
+      const priceUSD = item.precioBase; // Ya está en USD según el mock data
+      const currentBcvRate = bcvRate?.rate || 224.38;
+      const priceVES = priceUSD * currentBcvRate;
+
+      const baseImponible = priceVES;
       const montoIva = item.ivaAplica ? calculateIVA(baseImponible) : 0;
-      
+
       const newLine: InvoiceLine = {
         id: crypto.randomUUID(),
         itemId: item.id!,
         codigo: item.codigo,
         descripcion: item.descripcion,
         cantidad: 1,
-        precioUnitario: item.precioBase,
+        precioUnitario: priceVES, // Precio en VES convertido
+        valorTotal: priceVES, // Valor Total = precioUnitario * cantidad
+        tipoItem: item.ivaAplica ? 'G' : 'E', // G=Gravado, E=Exento
+        precioUnitarioUsd: priceUSD, // Mantener referencia USD
         descuento: 0,
         baseImponible,
         alicuotaIva: item.ivaAplica ? 16 : 0,
@@ -170,13 +192,25 @@ export function InvoiceWizardPage() {
     setInvoiceLines(lines =>
       lines.map(line => {
         if (line.itemId === itemId) {
-          const updatedLine = { ...line, ...updates };
-          const baseImponible = updatedLine.cantidad * updatedLine.precioUnitario * (1 - updatedLine.descuento / 100);
           const item = items.find(i => i.id === itemId);
+
+          // VALIDAR STOCK SI SE ESTÁ CAMBIANDO LA CANTIDAD
+          if (updates.cantidad && item?.tipo === 'producto') {
+            const stockAvailable = item.stockActual || 0;
+            if (updates.cantidad > stockAvailable) {
+              toast.error(`Stock insuficiente para ${item.descripcion}. Disponible: ${stockAvailable}`);
+              return line; // No actualizar si no hay suficiente stock
+            }
+          }
+
+          const updatedLine = { ...line, ...updates };
+          const valorTotal = updatedLine.cantidad * updatedLine.precioUnitario;
+          const baseImponible = valorTotal * (1 - updatedLine.descuento / 100);
           const montoIva = item?.ivaAplica ? calculateIVA(baseImponible) : 0;
-          
+
           return {
             ...updatedLine,
+            valorTotal,
             baseImponible,
             alicuotaIva: item?.ivaAplica ? 16 : 0,
             montoIva,
@@ -377,6 +411,45 @@ export function InvoiceWizardPage() {
     setCurrentStep(currentStep - 1);
   };
 
+  // FUNCIÓN PARA DESCONTAR INVENTARIO AUTOMÁTICAMENTE
+  const updateInventoryAfterInvoice = async (invoiceLines: InvoiceLine[]) => {
+    const movements = [];
+
+    for (const line of invoiceLines) {
+      const item = items.find(i => i.id === line.itemId);
+
+      // Solo descontar inventario para productos (no servicios)
+      if (item && item.tipo === 'producto') {
+        const movement = {
+          itemId: line.itemId,
+          tipo: 'salida' as const,
+          cantidad: line.cantidad,
+          costoUnitario: item.costoPromedio || (line.precioUnitario * 0.8), // Estimado del costo
+          motivo: `Venta en factura ${selectedCustomer?.razonSocial}`,
+          referencia: `FACTURA-AUTO`,
+          usuarioId: '1', // Usuario actual
+          fecha: new Date().toISOString(),
+          stockAnterior: item.stockActual || 0,
+          stockNuevo: Math.max(0, (item.stockActual || 0) - line.cantidad),
+        };
+        movements.push(movement);
+      }
+    }
+
+    // Crear todos los movimientos de inventario
+    for (const movement of movements) {
+      await new Promise<void>((resolve, reject) => {
+        createInventoryMovementMutation.mutate(movement, {
+          onSuccess: () => resolve(),
+          onError: (error) => {
+            console.error('Error creating inventory movement:', error);
+            resolve(); // Continue with other movements even if one fails
+          },
+        });
+      });
+    }
+  };
+
   const handleSubmitInvoice = async () => {
     if (!selectedCustomer || !bcvRate) return;
 
@@ -411,27 +484,90 @@ export function InvoiceWizardPage() {
           });
         });
       } else {
-        // Prepare data for standard invoice creation
+        // Prepare data for standard invoice creation con estructura del PDF
+        const currentDate = new Date();
+        const numeroDocumento = `D-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
+
+        // CALCULAR TOTALES SEGÚN ESTRUCTURA DEL PDF
+        const totalBaseImponibleG = invoiceLines
+          .filter(line => line.tipoItem === 'G')
+          .reduce((sum, line) => sum + line.baseImponible, 0);
+
+        const totalImpuestoG = invoiceLines
+          .filter(line => line.tipoItem === 'G')
+          .reduce((sum, line) => sum + line.montoIva, 0);
+
+        const totalExento = invoiceLines
+          .filter(line => line.tipoItem === 'E')
+          .reduce((sum, line) => sum + line.valorTotal, 0);
+
+        // Calcular IGTF (3% sobre pagos en USD)
+        const pagoDivisas = payments
+          .filter(p => p.tipo === 'usd_cash' || p.tipo === 'zelle')
+          .reduce((sum, p) => sum + (p.montoUsd || 0), 0);
+
+        const impuestoIgtf = pagoDivisas * 0.03; // 3% IGTF
+        const totalBsDespuesIgtf = total + (impuestoIgtf * (bcvRate?.rate || 224.38));
+
         const standardInvoiceData: Omit<Invoice, 'id' | 'numero' | 'numeroControl'> = {
-          fecha: new Date().toISOString(),
+          numeroDocumento,
+          fecha: currentDate.toISOString(),
+          horaEmision: currentDate.toLocaleTimeString('es-VE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          }),
+
+          // ESTRUCTURA SEGÚN PDF DEMOSTRATIVO
           emisor: {
-            nombre: 'Axiona, C.A.',
-            rif: 'J-12345678-9',
-            domicilio: 'Caracas, Venezuela'
+            nombre: 'EMPRESA DE PRUEBA',
+            rif: 'J-231122344',
+            domicilio: 'CUALQUIER LUGAR DE CSS',
+            correo: 'empresa@nueva.ext',
+            telefono: '0123-456-8556'
           },
-          receptor: selectedCustomer,
+          receptor: {
+            nombre: selectedCustomer.razonSocial,
+            identificacion: selectedCustomer.rif,
+            domicilio: selectedCustomer.domicilio,
+            correo: selectedCustomer.email,
+            telefono: selectedCustomer.telefono
+          },
+          vendedor: {
+            codigo: '23600',
+            nombre: 'Jose Quintero',
+            numCajero: 1
+          },
+
           lineas: invoiceLines,
           pagos: payments,
+
+          // TOTALES SEGÚN ESTRUCTURA DEL PDF
           subtotal,
-          baseImponible: subtotal, // Base gravable para IVA (igual al subtotal)
+          baseImponible: subtotal,
+          totalBaseImponibleG,
+          totalImpuestoG,
           montoIva: totalIva,
+          totalExento,
           montoIgtf: totalIgtf,
+          impuestoIgtf,
+          pagoDivisas,
+          totalBsDespuesIgtf,
           total,
           totalUsdReferencia,
-          tasaBcv: bcvRate?.rate || 0,
+          tasaBcv: bcvRate?.rate || 224.38,
           fechaTasaBcv: bcvRate?.date || new Date().toISOString(),
           canal: 'digital',
           estado: 'emitida',
+
+          // INFORMACIÓN ADICIONAL LEGAL SEGÚN PDF
+          informacionAdicional: {
+            adicional1: 'De conformidad con el Art. 10 de la ley del IVA y Art. 4 de su reglamento. Nuestras facturas son emitidas por orden y cuenta de terceros.',
+            adicional2: 'De conformidad con el Art. 128 de la Ley del BCV, los pagos estipulados en moneda extranjera se cancelan, salvo convención especial, con la entrega de lo equivalente en moneda de curso legal, al tipo de cambio corriente en el lugar de la fecha de pago.',
+            adicional3: 'De conformidad con la Gaceta Oficial N° 42339 de fecha 17/03/2022 se aplica el cobro de IGTF.',
+            adicional4: 'De conformidad a lo establecido en la Ley General de Puertos, publicada en GO N° 39.140 de fecha 17 de marzo del 2009, Tasas Portuarias, Art. 56, numeral4, derecho de USO DE SUPERFICIE.'
+          }
         };
 
         invoice = await new Promise<Invoice>((resolve, reject) => {
@@ -440,6 +576,15 @@ export function InvoiceWizardPage() {
             onError: reject,
           });
         });
+      }
+
+      // DESCUENTO AUTOMÁTICO DEL INVENTARIO
+      try {
+        await updateInventoryAfterInvoice(invoiceLines);
+        console.log('✅ Inventory successfully updated after invoice creation');
+      } catch (error) {
+        console.error('❌ Failed to update inventory:', error);
+        toast.warning(`Factura emitida pero no se pudo actualizar el inventario automáticamente`);
       }
 
       // Seal BCV rate for fiscal invoices
@@ -452,8 +597,16 @@ export function InvoiceWizardPage() {
           toast.warning(`Invoice ${invoice.numero} created but BCV rate sealing failed`);
         }
       } else {
-        toast.success(`Factura ${invoice.numero} emitida correctamente`);
+        toast.success(`✅ Factura ${invoice.numero} emitida correctamente`);
       }
+
+      console.log('🔄 Navigating to /facturas after successful invoice creation');
+      console.log('🧾 Created invoice details:', {
+        id: invoice.id,
+        numero: invoice.numero,
+        numeroControl: invoice.numeroControl,
+        total: invoice.total
+      });
 
       navigate('/facturas');
     } catch (error) {
@@ -807,13 +960,14 @@ export function InvoiceWizardPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Código</TableHead>
                             <TableHead>Descripción</TableHead>
-                            <TableHead>Cant.</TableHead>
-                            <TableHead>Precio Unit.</TableHead>
-                            <TableHead>Desc. %</TableHead>
-                            <TableHead>Base Imp.</TableHead>
-                            <TableHead>IVA</TableHead>
+                            <TableHead>Cantidad</TableHead>
+                            <TableHead>Código</TableHead>
+                            <TableHead>Valor Unitario</TableHead>
+                            <TableHead>Valor Total</TableHead>
+                            <TableHead>Item Tipo</TableHead>
+                            <TableHead>Impuesto</TableHead>
+                            <TableHead>Valor Impuesto</TableHead>
                             {fiscalMode && <TableHead>Info Fiscal</TableHead>}
                             <TableHead>Acciones</TableHead>
                           </TableRow>
@@ -821,7 +975,6 @@ export function InvoiceWizardPage() {
                         <TableBody>
                           {invoiceLines.map((line) => (
                             <TableRow key={line.itemId}>
-                              <TableCell className="font-mono">{line.codigo}</TableCell>
                               <TableCell>{line.descripcion}</TableCell>
                               <TableCell>
                                 <Input
@@ -832,6 +985,7 @@ export function InvoiceWizardPage() {
                                   className="w-20"
                                 />
                               </TableCell>
+                              <TableCell className="font-mono">{line.codigo}</TableCell>
                               <TableCell>
                                 <MoneyInput
                                   value={line.precioUnitario}
@@ -839,17 +993,13 @@ export function InvoiceWizardPage() {
                                   className="w-32"
                                 />
                               </TableCell>
+                              <TableCell className="font-mono">{formatVES(line.valorTotal || (line.cantidad * line.precioUnitario))}</TableCell>
                               <TableCell>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={line.descuento}
-                                  onChange={(e) => updateInvoiceLine(line.itemId, { descuento: parseFloat(e.target.value) || 0 })}
-                                  className="w-20"
-                                />
+                                <Badge variant={line.tipoItem === 'G' ? 'default' : line.tipoItem === 'E' ? 'secondary' : 'outline'}>
+                                  {line.tipoItem === 'G' ? 'Gravado' : line.tipoItem === 'E' ? 'Exento' : 'Reducido'}
+                                </Badge>
                               </TableCell>
-                              <TableCell className="font-mono">{formatVES(line.baseImponible)}</TableCell>
+                              <TableCell className="font-mono">{line.alicuotaIva}%</TableCell>
                               <TableCell className="font-mono">{formatVES(line.montoIva)}</TableCell>
                               {fiscalMode && (
                                 <TableCell>
@@ -919,14 +1069,29 @@ export function InvoiceWizardPage() {
                               <div className="text-right">
                                 <p className="font-mono">
                                   {isLoadingRate ? 'Cargando...' : formatPriceCompact({
-                                    vesAmount: item.precioBase,
-                                    originalCurrency: 'VES'
+                                    usdAmount: item.precioBase,
+                                    originalCurrency: 'USD'
                                   })}
                                 </p>
                                 <div className="flex gap-1">
                                   <Badge variant={item.tipo === 'producto' ? 'default' : 'secondary'}>
                                     {item.tipo}
                                   </Badge>
+                                  {item.tipo === 'producto' && (
+                                    <Badge
+                                      variant={
+                                        (item.stockActual || 0) <= 0 ? 'destructive' :
+                                        (item.stockActual || 0) <= (item.stockMinimo || 0) ? 'outline' :
+                                        'secondary'
+                                      }
+                                      className={
+                                        (item.stockActual || 0) <= (item.stockMinimo || 0) && (item.stockActual || 0) > 0
+                                          ? 'border-yellow-500 text-yellow-700' : ''
+                                      }
+                                    >
+                                      Stock: {item.stockActual || 0}
+                                    </Badge>
+                                  )}
                                   {item.ivaAplica && (
                                     <Badge variant="outline">IVA</Badge>
                                   )}

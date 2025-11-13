@@ -16,10 +16,10 @@ export const rifValidation = {
     'P': 'Pasaporte'
   } as const,
 
-  // Validate RIF format: J-12345678-9
+  // Validate RIF format: J-12345678-9 (supports both natural and juridical persons)
   isValidFormat: (rif: string): boolean => {
-    const rifPattern = /^[JGVEP]-\d{8}-\d$/;
-    return rifPattern.test(rif);
+    const rifPattern = /^[VEJPG]-?\d{8}-?\d$/i;
+    return rifPattern.test(rif.replace(/\s/g, ''));
   },
 
   // Calculate RIF verification digit
@@ -53,7 +53,7 @@ export const rifValidation = {
 
   // Format RIF string
   format: (rif: string): string => {
-    const clean = rif.replace(/[^JGVEP0-9]/g, '').toUpperCase();
+    const clean = rif.replace(/[^VEJPG0-9]/g, '').toUpperCase();
     if (clean.length >= 9) {
       return `${clean[0]}-${clean.substring(1, 9)}-${clean[9] || ''}`;
     }

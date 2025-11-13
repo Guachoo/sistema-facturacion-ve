@@ -1,12 +1,12 @@
 // PHASE 2 EXTENSIONS for invoices.ts
 // Complete fiscal invoice system with TFHKA integration and Venezuelan tax calculations
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Invoice, InvoiceLine, Customer, Item, Payment } from '@/types';
 
 // Enhanced invoice creation with full fiscal compliance
 export const useCreateFiscalInvoice = () => {
-  // const queryClient = useQueryClient(); // TODO: Use for cache invalidation
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (invoiceData: {
@@ -133,14 +133,27 @@ export const useCreateFiscalInvoice = () => {
 
         // 8. Update invoice with TFHKA data
         if (tfhkaResult.success) {
-          await fiscalDocumentHelpers.updateDocumentStatus(
-            savedInvoice.id!,
-            'emitted',
-            {
-              tfhka_document_id: tfhkaResult.tfhkaId,
-              tfhka_status: 'approved'
-            }
-          );
+          // Verificar si usamos modo mock
+          const { useMockInvoices } = await import('@/lib/mock-invoices');
+
+          if (useMockInvoices()) {
+            console.log('🔧 Mock: Actualizando estado TFHKA localmente');
+            // En modo mock, solo loggeamos el éxito
+            savedInvoice.estado = 'emitida';
+            // Agregamos los datos TFHKA al objeto
+            (savedInvoice as any).tfhka_document_id = tfhkaResult.tfhkaId;
+            (savedInvoice as any).tfhka_status = 'approved';
+          } else {
+            // Solo llamar a Supabase si no estamos en modo mock
+            await fiscalDocumentHelpers.updateDocumentStatus(
+              savedInvoice.id!,
+              'emitted',
+              {
+                tfhka_document_id: tfhkaResult.tfhkaId,
+                tfhka_status: 'approved'
+              }
+            );
+          }
         }
 
         logger.info('invoices', 'create_fiscal', 'Fiscal invoice created successfully', {
@@ -149,6 +162,29 @@ export const useCreateFiscalInvoice = () => {
           controlNumber,
           total: invoice.total
         });
+
+        // Actualizar cache de facturas si estamos en modo mock
+        const { useMockInvoices } = await import('@/lib/mock-invoices');
+        if (useMockInvoices()) {
+          console.log('🔧 Mock: Actualizando cache de facturas con nueva factura');
+
+          // Obtener facturas actuales del cache
+          const currentInvoices = queryClient.getQueryData<Invoice[]>(['invoices']) || [];
+
+          // Agregar la nueva factura al principio de la lista
+          const updatedInvoices = [savedInvoice, ...currentInvoices];
+
+          console.log('🔧 Mock: Agregando nueva factura fiscal al cache:', {
+            nuevaFactura: savedInvoice.numero,
+            totalFacturas: updatedInvoices.length
+          });
+
+          // Actualizar el cache
+          queryClient.setQueryData(['invoices'], updatedInvoices);
+
+          // NO invalidar porque eso recargaría los datos mock originales
+          // queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        }
 
         return {
           invoice: savedInvoice,
@@ -247,15 +283,46 @@ async function generateNextDocumentNumber(serie: string): Promise<string> {
 
 // Save invoice to database
 async function saveInvoiceToDatabase(invoice: Invoice): Promise<Invoice> {
-  // Mock database save - in real implementation this would use Supabase
-  const savedInvoice: Invoice = {
-    ...invoice,
-    id: `INV_${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  const { useMockInvoices } = await import('@/lib/mock-invoices');
 
-  return savedInvoice;
+  // Verificar si usamos modo mock (sin Supabase)
+  if (useMockInvoices()) {
+    console.log('🔧 Guardando factura fiscal mock (sin Supabase)');
+
+    // Mock database save - in real implementation this would use Supabase
+    const savedInvoice: Invoice = {
+      ...invoice,
+      id: `INV_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    return savedInvoice;
+  }
+
+  // Código real de Supabase aquí (cuando esté disponible)
+  const { fiscalDocumentHelpers } = await import('@/lib/supabase');
+
+  try {
+    const response = await fetch(`https://supfddcbyfuzvxsrzwio.supabase.co/rest/v1/fiscal_documents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.JQQbEn4ORkKR63fvfO0mUOo1hfFPQHgUr_9F2I0NV0E',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.JQQbEn4ORkKR63fvfO0mUOo1hfFPQHgUr_9F2I0NV0E`
+      },
+      body: JSON.stringify(invoice)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save to Supabase');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving to database:', error);
+    throw error;
+  }
 }
 
 // Submit invoice to TFHKA for fiscal validation

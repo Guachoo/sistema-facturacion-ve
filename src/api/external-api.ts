@@ -35,7 +35,7 @@ export interface WebhookConfig {
 
 // Esquemas de validación
 const CustomerCreateSchema = z.object({
-  rif: z.string().regex(/^[VEJPG]-\d{8}-\d$/, 'RIF inválido'),
+  rif: z.string().regex(/^[VEJPG]-?\d{8}-?\d$/i, 'RIF inválido'),
   nombre: z.string().min(1, 'Nombre requerido'),
   direccion: z.string().optional(),
   telefono: z.string().optional(),

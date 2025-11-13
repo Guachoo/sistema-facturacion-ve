@@ -85,7 +85,7 @@ const mockItems: Item[] = [
     tipo: 'producto',
     precioBase: 30, // USD 30.00
     ivaAplica: true,
-    stockActual: 25,
+    stockActual: 3,
     stockMinimo: 5,
     stockMaximo: 50,
     costoPromedio: 1228500,
@@ -110,7 +110,7 @@ const mockItems: Item[] = [
     tipo: 'producto',
     precioBase: 750, // USD 750.00
     ivaAplica: true,
-    stockActual: 15,
+    stockActual: 0,
     stockMinimo: 3,
     stockMaximo: 30,
     costoPromedio: 30712500,
@@ -285,7 +285,7 @@ const mockItems: Item[] = [
     tipo: 'producto',
     precioBase: 300, // USD 300.00
     ivaAplica: true,
-    stockActual: 12,
+    stockActual: 2,
     stockMinimo: 3,
     stockMaximo: 25,
     costoPromedio: 12285000,
@@ -555,4 +555,9 @@ export const useDeleteItem = () => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
     },
   });
+};
+
+// Export function to access mock data
+export const getMockItems = (): Item[] => {
+  return mockItems;
 };

@@ -169,7 +169,15 @@ export function usePriceFormatter() {
 export function useTablePriceFormatter() {
   const { formatPriceCompact, formatUsdOnly, isLoadingRate } = usePriceFormatter();
 
-  const formatTablePrice = (item: any): string => {
+  const formatTablePrice = (data: PriceData): string => {
+    // Si ya viene con la estructura PriceData (desde invoices), usar directamente
+    if (data.usdAmount !== undefined || data.vesAmount !== undefined) {
+      return formatPriceCompact(data);
+    }
+
+    // Para compatibilidad con items (data como object genérico)
+    const item = data as any;
+
     // Si el item tiene precio en USD, usarlo como base
     if (item.precio_usd || item.precioUsd || item.price_usd) {
       return formatPriceCompact({

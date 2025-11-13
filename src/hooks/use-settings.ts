@@ -345,8 +345,8 @@ export function useSettingsValidation() {
           }
           break;
         case 'rif':
-          if (value && !/^[VEJGP]-\d{8}-\d$/.test(value)) {
-            return 'Formato de RIF inválido (ej: J-12345678-9)';
+          if (value && !/^[VEJPG]-?\d{8}-?\d$/i.test(value.replace(/\s/g, ''))) {
+            return 'Formato de RIF inválido (ej: V-27853152-6, J-12345678-9)';
           }
           break;
       }

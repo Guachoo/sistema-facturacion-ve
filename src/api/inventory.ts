@@ -5,14 +5,43 @@ import type { InventoryMovement } from '@/types';
 const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
 
+/**
+ * Convierte un ID numérico a UUID válido
+ * Para mantener compatibilidad entre mock data y base de datos
+ */
+const convertToValidUUID = (id: string): string => {
+  // Si ya es un UUID válido, retornarlo
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (uuidPattern.test(id)) {
+    return id;
+  }
+
+  // Convertir ID numérico a UUID v4 determinístico
+  // Formato: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx (36 caracteres)
+  const numericId = parseInt(id) || 0;
+
+  // Generar UUID determinístico basado en el ID numérico
+  const hex = numericId.toString(16).padStart(8, '0').slice(0, 8);
+  const part1 = hex.padEnd(8, '0');
+  const part2 = '0000';
+  const part3 = '4000'; // Version 4 UUID
+  const part4 = '8000'; // Variant bits
+  const part5 = hex.padEnd(12, '0').slice(0, 12);
+
+  return `${part1}-${part2}-${part3}-${part4}-${part5}`;
+};
+
 export const useInventoryMovements = (itemId?: string) => {
   return useQuery({
     queryKey: ['inventoryMovements', itemId],
     queryFn: async (): Promise<InventoryMovement[]> => {
       console.log('Fetching inventory movements from Supabase', itemId ? `for item ${itemId}` : 'for all items');
 
-      const url = itemId
-        ? `${SUPABASE_URL}/rest/v1/inventory_movements?item_id=eq.${itemId}&order=fecha.desc`
+      // Convertir itemId a UUID si se proporciona
+      const validItemId = itemId ? convertToValidUUID(itemId) : undefined;
+
+      const url = validItemId
+        ? `${SUPABASE_URL}/rest/v1/inventory_movements?item_id=eq.${validItemId}&order=fecha.desc`
         : `${SUPABASE_URL}/rest/v1/inventory_movements?order=fecha.desc`;
 
       const response = await fetch(url, {
@@ -60,14 +89,25 @@ export const useCreateInventoryMovement = () => {
     mutationFn: async (movement: Omit<InventoryMovement, 'id' | 'createdAt'>): Promise<InventoryMovement> => {
       console.log('Creating inventory movement in Supabase:', movement);
 
+      // Convertir itemId y usuarioId a UUIDs válidos
+      const validItemId = convertToValidUUID(movement.itemId);
+      const validUsuarioId = convertToValidUUID(movement.usuarioId);
+
+      console.log('Converting IDs:', {
+        originalItemId: movement.itemId,
+        convertedItemId: validItemId,
+        originalUsuarioId: movement.usuarioId,
+        convertedUsuarioId: validUsuarioId
+      });
+
       const insertData = {
-        item_id: movement.itemId,
+        item_id: validItemId,
         tipo: movement.tipo,
         cantidad: movement.cantidad,
         costo_unitario: movement.costoUnitario,
         motivo: movement.motivo,
         referencia: movement.referencia,
-        usuario_id: movement.usuarioId,
+        usuario_id: validUsuarioId,
         fecha: movement.fecha,
         stock_anterior: movement.stockAnterior,
         stock_nuevo: movement.stockNuevo,
@@ -173,32 +213,17 @@ export const useInventoryAlerts = () => {
   return useQuery({
     queryKey: ['inventoryAlerts'],
     queryFn: async () => {
-      console.log('Fetching inventory alerts from Supabase');
+      console.log('Fetching inventory alerts from mock data');
 
-      // Fetch items with stock information
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/items?select=*`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Error fetching inventory alerts');
-      }
-
-      const items = await response.json();
-
-      if (!Array.isArray(items)) {
-        throw new Error('Invalid response format from server');
-      }
+      // Import mock data from items.ts
+      const { getMockItems } = await import('./items');
+      const items = getMockItems();
 
       const alerts = [];
 
       for (const item of items) {
-        const stockActual = item.stock_actual || 0;
-        const stockMinimo = item.stock_minimo || 0;
+        const stockActual = item.stockActual || 0;
+        const stockMinimo = item.stockMinimo || 0;
 
         if (stockActual === 0) {
           alerts.push({

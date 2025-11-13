@@ -294,30 +294,21 @@ export function ItemsPage() {
           return acc;
         }
 
-        const priceVes = item.precioBase ?? 0;
-        const costVes = item.costoPromedio ?? priceVes;
-        const usdPrice = item.precioUsd ?? 0;
-        const hasUsdReference = usdPrice > 0 && priceVes > 0;
-        const historicalRate = hasUsdReference ? priceVes / usdPrice : 0;
-        const canRescale = historicalRate > USD_REFERENCE_THRESHOLD;
+        // FIXED: Use dynamic BCV rate instead of hardcoded
+        const usdPrice = item.precioBase ?? 0; // USD price
+        const costUsd = (item.costoPromedio && item.costoPromedio < 1000)
+          ? item.costoPromedio
+          : usdPrice * 0.9; // Default cost as 90% of price
 
-        const unitUsd = canRescale
-          ? costVes / historicalRate
-          : effectiveBcvRate > 0
-            ? costVes / effectiveBcvRate
-            : 0;
+        const costVes = costUsd * effectiveBcvRate; // Use dynamic BCV rate
 
-        const unitVes = canRescale
-          ? usdToVes(unitUsd, effectiveBcvRate)
-          : costVes;
-
-        acc.totalInventoryValue += unitVes * stock;
-        acc.totalInventoryValueUsd += unitUsd * stock;
+        acc.totalInventoryValue += costVes * stock; // Use cost for inventory value
+        acc.totalInventoryValueUsd += costUsd * stock;
         return acc;
       },
       { totalInventoryValue: 0, totalInventoryValueUsd: 0 }
     );
-  }, [items, usdToVes, effectiveBcvRate]);
+  }, [items, effectiveBcvRate]);
 
   const totalInventoryValue = inventoryTotals.totalInventoryValue;
   const totalInventoryValueUsd = inventoryTotals.totalInventoryValueUsd;

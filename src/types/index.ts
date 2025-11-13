@@ -81,11 +81,13 @@ export interface InvoiceLine {
   codigo: string;
   descripcion: string;
   cantidad: number;
-  precioUnitario: number; // VES
+  precioUnitario: number; // VES - Valor Unitario
+  valorTotal: number; // VES - Valor Total calculado
+  tipoItem: 'G' | 'E' | 'R'; // G=Gravado, E=Exento, R=Reducido (según PDF)
   descuento: number; // percentage 0-100
   baseImponible: number; // calculated
   alicuotaIva: number; // IVA rate percentage (0, 8, 16, etc.)
-  montoIva: number; // calculated
+  montoIva: number; // Valor Impuesto calculated
   total: number; // calculated
   item: Item; // Reference to the full item for tax calculations
 }
@@ -99,29 +101,79 @@ export interface Payment {
   montoIgtf?: number;
 }
 
+export interface Vendedor {
+  codigo: string;
+  nombre: string;
+  numCajero: number;
+}
+
+export interface FiscalEmisor {
+  nombre: string;
+  rif: string;
+  domicilio: string;
+  correo?: string;
+  telefono?: string;
+}
+
+export interface FiscalReceptor {
+  nombre: string;
+  identificacion: string;
+  domicilio: string;
+  correo?: string;
+  telefono?: string;
+}
+
+export interface InformacionAdicional {
+  adicional1?: string;
+  adicional2?: string;
+  adicional3?: string;
+  adicional4?: string;
+}
+
+export interface FormaPago {
+  tipo: string; // "Depósito en cuenta", "Giro", etc.
+  monto: number;
+  moneda: 'USD' | 'BSD';
+  tipoCambio?: number;
+}
+
 export interface Invoice {
   id?: string;
   numero: string;
+  numeroDocumento?: string; // Formato D-22975
   transaction_id?: string; // ✅ NUEVO - ID transaccional estructurado
   numeroControl: string;
   fecha: string;
+  horaEmision?: string; // Hora formato "04:52:00 pm"
   fechaVencimiento?: string;
   moneda?: 'VES' | 'USD';
-  emisor: {
-    nombre: string;
-    rif: string;
-    domicilio: string;
-  };
-  receptor: Customer;
+
+  // ESTRUCTURA SEGÚN PDF DEMOSTRATIVO
+  emisor: FiscalEmisor;
+  receptor: FiscalReceptor;
+  vendedor?: Vendedor;
+
   lineas: InvoiceLine[];
   pagos: Payment[];
+  formasPago?: FormaPago[]; // Formas de pago detalladas según PDF
+
+  // TOTALES SEGÚN ESTRUCTURA DEL PDF
   subtotal: number; // VES
   baseImponible: number; // VES - Base gravable para IVA
+  totalBaseImponibleG?: number; // Total Base Imponible G (16%)
+  totalImpuestoG?: number; // Total Impuesto G (16%)
   montoIva: number; // VES
-  montoIgtf: number; // VES
   montoExento?: number; // VES - Monto exento de IVA
+  totalExento?: number; // VES - Total Exento según PDF
   descuento?: number; // VES - Descuentos aplicados
-  total: number; // VES
+
+  // IGTF según PDF
+  montoIgtf: number; // VES
+  impuestoIgtf?: number; // Impuesto (IGTF) AL 3,00%
+  pagoDivisas?: number; // Pago en Divisas
+  totalBsDespuesIgtf?: number; // Total a Pagar en Bs. después de IGTF
+
+  total: number; // VES - Total A Pagar
   totalUsdReferencia: number; // Reference only
   tasaBcv: number;
   fechaTasaBcv: string;
@@ -129,9 +181,16 @@ export interface Invoice {
   estado: 'emitida' | 'nota_credito' | 'nota_debito' | 'anulada';
   facturaAfectadaId?: string;
   facturaAfectadaNumero?: string;
+  facturaAfectadaFecha?: string; // Fecha de la factura afectada
+  facturaAfectadaMonto?: number; // Monto de la factura afectada
+  baseImponibleIgtf?: number; // Base para cálculo IGTF en notas de crédito
   tipoNota?: 'credito' | 'debito';
   motivoNota?: string;
   notas?: string; // Notas adicionales para la factura
+
+  // INFORMACIÓN ADICIONAL LEGAL SEGÚN PDF
+  informacionAdicional?: InformacionAdicional;
+
   createdAt?: string;
   updatedAt?: string;
   fiscalTemplate?: any; // Venezuelan fiscal document JSON template

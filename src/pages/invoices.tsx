@@ -24,7 +24,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, Search, Download, FileText, Calendar as CalendarIcon, FileEdit, FileMinus, Eye, Shield, AlertTriangle, X, CheckCircle, Mail } from 'lucide-react';
-import { useInvoices, useVoidInvoice } from '@/api/invoices';
+import { useInvoices, useVoidInvoice, refreshMockInvoices } from '@/api/invoices';
 import { useCreateCreditNote, useCreateDebitNote, useCancelInvoice } from '@/api/invoices-extended';
 import { formatVES, formatUSD, formatDateVE } from '@/lib/formatters';
 import { useTablePriceFormatter } from '@/hooks/use-price-formatter';
@@ -59,6 +59,15 @@ export function InvoicesPage() {
   // const [fiscalStatusFilter, setFiscalStatusFilter] = useState<string>('all');
 
   const { data: invoices = [], isLoading } = useInvoices();
+
+  // Debug: log invoices data
+  useEffect(() => {
+    console.log('📊 InvoicesPage: Datos recibidos:', {
+      totalFacturas: invoices.length,
+      loading: isLoading,
+      primerasFacturas: invoices.slice(0, 3).map(inv => ({ numero: inv.numero, total: inv.total }))
+    });
+  }, [invoices, isLoading]);
   const voidInvoiceMutation = useVoidInvoice();
   const sendEmailMutation = useSendInvoiceEmail();
   const sendStatusNotificationMutation = useSendStatusChangeNotification();
@@ -97,8 +106,8 @@ export function InvoicesPage() {
       invoice.receptor.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
       invoice.receptor.rif.toLowerCase().includes(search.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || invoice.estado === statusFilter;
-    const matchesChannel = channelFilter === 'all' || invoice.canal === channelFilter;
+    const matchesStatus = statusFilter === 'all' || invoice.estado?.toLowerCase() === statusFilter.toLowerCase();
+    const matchesChannel = channelFilter === 'all' || invoice.canal?.toLowerCase() === channelFilter.toLowerCase();
 
     const invoiceDate = new Date(invoice.fecha);
     const matchesDateFrom = !dateFrom || invoiceDate >= dateFrom;
@@ -256,7 +265,7 @@ export function InvoicesPage() {
   };
 
   const getSeniatStatusColor = (estado: string) => {
-    switch (estado) {
+    switch (estado?.toLowerCase()) {
       case 'emitida':
         return 'bg-blue-100 text-blue-800';
       case 'nota_credito':
@@ -271,7 +280,7 @@ export function InvoicesPage() {
   };
 
   const getSeniatStatusIcon = (estado: string) => {
-    switch (estado) {
+    switch (estado?.toLowerCase()) {
       case 'emitida':
         return <CheckCircle className="h-3 w-3" />;
       case 'nota_credito':
@@ -285,10 +294,12 @@ export function InvoicesPage() {
     }
   };
 
-  const totalEmitidas = invoices.filter(inv => inv.estado === 'emitida').length;
-  const totalNotas = invoices.filter(inv => inv.estado === 'nota_credito' || inv.estado === 'nota_debito').length;
+  const totalEmitidas = invoices.filter(inv => inv.estado?.toLowerCase() === 'emitida').length;
+  const totalNotas = invoices.filter(inv =>
+    inv.estado?.toLowerCase() === 'nota_credito' || inv.estado?.toLowerCase() === 'nota_debito'
+  ).length;
   const totalVentasMes = invoices
-    .filter(inv => inv.estado === 'emitida')
+    .filter(inv => inv.estado?.toLowerCase() === 'emitida')
     .reduce((sum, inv) => sum + inv.total, 0);
 
   return (
@@ -301,12 +312,27 @@ export function InvoicesPage() {
             Gestiona todas tus facturas emitidas
           </p>
         </div>
-        <Button asChild className="w-full md:w-auto">
-          <Link to="/facturas/nueva">
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Factura
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild className="w-full md:w-auto">
+            <Link to="/facturas/nueva">
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Factura
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full md:w-auto"
+            onClick={() => {
+              const refreshed = refreshMockInvoices();
+              if (refreshed) {
+                // Forzar recarga de la query
+                window.location.reload();
+              }
+            }}
+          >
+            🔄 Refrescar
+          </Button>
+        </div>
       </div>
 
       {/* Alertas de Facturas */}
@@ -559,9 +585,9 @@ export function InvoicesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge className={
-                        invoice.canal === 'digital' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-100'
+                        invoice.canal?.toLowerCase() === 'digital' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-100'
                       }>
-                        {invoice.canal === 'digital' ? 'Digital' : 'Máquina'}
+                        {invoice.canal?.toLowerCase() === 'digital' ? 'Digital' : 'Máquina'}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono">
@@ -581,10 +607,10 @@ export function InvoicesPage() {
                           <div className="flex items-center gap-1">
                             {getSeniatStatusIcon(invoice.estado)}
                             <span>
-                              {invoice.estado === 'emitida' ? 'Emitida' :
-                               invoice.estado === 'nota_credito' ? 'N. Crédito' :
-                               invoice.estado === 'nota_debito' ? 'N. Débito' :
-                               invoice.estado === 'anulada' ? 'Anulada' :
+                              {invoice.estado?.toLowerCase() === 'emitida' ? 'Emitida' :
+                               invoice.estado?.toLowerCase() === 'nota_credito' ? 'N. Crédito' :
+                               invoice.estado?.toLowerCase() === 'nota_debito' ? 'N. Débito' :
+                               invoice.estado?.toLowerCase() === 'anulada' ? 'Anulada' :
                                'Desconocido'}
                             </span>
                           </div>
@@ -627,7 +653,7 @@ export function InvoicesPage() {
                         >
                           <Mail className="h-4 w-4" />
                         </Button>
-                        {invoice.estado === 'emitida' && (
+                        {invoice.estado?.toLowerCase() === 'emitida' && (
                           <>
                             <Button
                               variant="ghost"
@@ -754,15 +780,15 @@ export function InvoicesPage() {
                     <div className="flex gap-1">
                       <Badge
                         variant={
-                          invoice.estado === 'emitida' ? 'default' :
-                          invoice.estado === 'anulada' ? 'destructive' : 'secondary'
+                          invoice.estado?.toLowerCase() === 'emitida' ? 'default' :
+                          invoice.estado?.toLowerCase() === 'anulada' ? 'destructive' : 'secondary'
                         }
                         className="text-xs px-1 py-0"
                       >
-                        {invoice.estado === 'emitida' ? 'Emi' :
-                         invoice.estado === 'anulada' ? 'Anu' :
-                         invoice.estado === 'nota_credito' ? 'NC' :
-                         invoice.estado === 'nota_debito' ? 'ND' : 'Bor'}
+                        {invoice.estado?.toLowerCase() === 'emitida' ? 'Emi' :
+                         invoice.estado?.toLowerCase() === 'anulada' ? 'Anu' :
+                         invoice.estado?.toLowerCase() === 'nota_credito' ? 'NC' :
+                         invoice.estado?.toLowerCase() === 'nota_debito' ? 'ND' : 'Bor'}
                       </Badge>
                     </div>
                   </div>
