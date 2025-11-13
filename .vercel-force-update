@@ -1,0 +1,16 @@
+Force Vercel deployment update
+Date: 2024-11-13 17:34
+Issue: Reports not showing completely in Vercel production
+Action: Force cache invalidation and re-deployment
+
+This file triggers a new deployment to ensure all reports are visible.
+All reports pages exist and work locally:
+- /reportes/libro-ventas
+- /reportes/igtf
+- /reportes/iva-mensual
+- /reportes/analisis-fiscal
+- /reportes/analisis-ventas
+- /reportes/analisis-clientes
+
+Build completed successfully without errors.
+Problem likely caused by Vercel cache not updating.
