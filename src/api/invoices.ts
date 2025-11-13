@@ -8,6 +8,8 @@ import {
   generateNextControlNumber
 } from '../lib/invoice-validation';
 
+// Force Vercel update - Invoice unique numbering system implemented - 2024-11-13
+
 // Función para refrescar datos mock
 export const refreshMockInvoices = () => {
   if (useMockInvoices()) {
