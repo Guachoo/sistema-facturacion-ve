@@ -80,7 +80,7 @@ export function BcvRatesPage() {
 
   const { data: currentRate, isLoading: currentLoading, refetch: refetchCurrent } = useBcvRate();
   const { data: historicalRates, isLoading: historicalLoading } = useHistoricalBcvRates();
-  const { data: analytics } = useBcvRateAnalytics(analyticsRange);
+  const { data: analytics } = useBcvRateAnalytics();
   const { data: rateMonitor } = useRateChangeMonitor();
 
   // New hooks for rate history
