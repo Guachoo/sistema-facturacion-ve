@@ -103,9 +103,9 @@ export function BcvRatesPage() {
 
   const handleSealRate = (data: SealRateForm) => {
     sealRateMutation.mutate({
-      fecha: data.fecha,
-      motivo: data.motivo,
-      documentoId: data.documentoId
+      documentId: data.documentoId || 'manual-seal-' + Date.now(),
+      documentType: 'factura',
+      forceRefresh: true
     }, {
       onSuccess: () => {
         toast.success('Tasa BCV sellada correctamente', {
