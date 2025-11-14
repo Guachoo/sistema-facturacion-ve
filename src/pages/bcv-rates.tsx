@@ -79,10 +79,7 @@ export function BcvRatesPage() {
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
 
   const { data: currentRate, isLoading: currentLoading, refetch: refetchCurrent } = useBcvRate();
-  const { data: historicalRates, isLoading: historicalLoading } = useHistoricalBcvRates({
-    fromDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    toDate: new Date().toISOString().split('T')[0]
-  });
+  const { data: historicalRates, isLoading: historicalLoading } = useHistoricalBcvRates();
   const { data: analytics } = useBcvRateAnalytics(analyticsRange);
   const { data: rateMonitor } = useRateChangeMonitor();
 
