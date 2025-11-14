@@ -71,12 +71,25 @@ export class BcvClient {
 
   private clearCache() {
     try {
-      // Clear any localStorage related to BCV rates
+      // Clear ALL localStorage related to BCV rates and analytics
       localStorage.removeItem('bcv_rate_current');
       localStorage.removeItem('bcv_rate_backup');
       localStorage.removeItem('bcv_rate_metadata');
       localStorage.removeItem('cached_bcv_rate');
-      console.log('🧹 BCV cache cleared - using new APIs');
+      localStorage.removeItem('rate_analytics');
+      localStorage.removeItem('rate_history');
+      localStorage.removeItem('bcv_rates_history');
+      localStorage.removeItem('rates_cache');
+      localStorage.removeItem('bcv_historical_rates');
+
+      // Clear any rate cache with date patterns
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('rate') || key.includes('bcv') || key.includes('exchange')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      console.log('🧹 BCV cache FORCE cleared - all old rates removed');
     } catch (error) {
       console.warn('Could not clear cache:', error);
     }

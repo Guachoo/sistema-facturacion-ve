@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { BcvRate } from '@/types';
 import { getCurrentBcvRate, getBcvRateForDate, rateCache } from '@/lib/rate-cache';
 import { rateMonitor, startRateMonitoring } from '@/lib/rate-monitor';
+import { RateHistoryManager } from '@/lib/rate-history';
 
 // Enhanced BCV rate fetching with intelligent caching and monitoring
 const fetchBCVRate = async (date?: string): Promise<BcvRate> => {
@@ -18,20 +19,26 @@ const fetchBCVRate = async (date?: string): Promise<BcvRate> => {
     } else {
       // Get current rate with caching
       const cachedRate = await getCurrentBcvRate();
-      return {
+
+      const rateResult = {
         date: cachedRate.date,
         rate: cachedRate.rate,
         source: cachedRate.source,
         lastUpdate: cachedRate.lastUpdate
       };
+
+      // Save to history automatically
+      RateHistoryManager.saveRate(rateResult);
+
+      return rateResult;
     }
   } catch (error) {
     console.error('Error fetching BCV rate:', error);
 
-    // Ultimate fallback
+    // Ultimate fallback - UPDATED RATE
     return {
       date: date || new Date().toISOString().split('T')[0],
-      rate: 36.50,
+      rate: 234.50,
       source: 'emergency_fallback',
       lastUpdate: new Date().toISOString()
     };
@@ -341,18 +348,34 @@ async function storeSealedRate(sealData: {
 }
 
 async function getHistoricalRatesFromDatabase(days: number): Promise<BcvRate[]> {
-  // Mock implementation - would normally fetch from database
-  // Generate some sample historical data
+  // Use RateHistoryManager for real historical data
+  try {
+    const historyEntries = RateHistoryManager.getRecentHistory(days);
+
+    // If we have real history, use it
+    if (historyEntries.length > 0) {
+      return historyEntries.map(entry => ({
+        date: entry.date,
+        rate: entry.rate,
+        source: entry.source,
+        lastUpdate: entry.timestamp
+      }));
+    }
+  } catch (error) {
+    console.warn('Could not get historical data from RateHistoryManager:', error);
+  }
+
+  // Fallback: Generate realistic mock data with current rates
   const rates: BcvRate[] = [];
-  const baseRate = 36.50;
+  const baseRate = 234.50; // UPDATED BASE RATE
 
   for (let i = 0; i < days; i++) {
     const date = new Date();
     date.setDate(date.getDate() - i);
 
-    // Add some random variation
-    const variation = (Math.random() - 0.5) * 2; // +/- 1
-    const rate = baseRate + (i * 0.1) + variation;
+    // Add realistic variation around current rate
+    const variation = (Math.random() - 0.5) * 4; // +/- 2 Bs realistic fluctuation
+    const rate = baseRate - (i * 0.05) + variation; // Slight historical decrease
 
     rates.push({
       date: date.toISOString().split('T')[0],
@@ -507,15 +530,49 @@ export const useTestBcvConnectivity = () => {
 };
 
 /**
- * Auto-start monitoring when rates module is imported
+ * Hook to get BCV rate history
+ */
+export const useBcvRateHistory = (days: number = 30) => {
+  return useQuery({
+    queryKey: ['bcv-rate-history', days],
+    queryFn: (): Promise<import('@/lib/rate-history').RateHistoryEntry[]> => {
+      RateHistoryManager.initializeWithSampleData();
+      return Promise.resolve(RateHistoryManager.getRecentHistory(days));
+    },
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    gcTime: 1000 * 60 * 60 * 2, // 2 hours
+  });
+};
+
+/**
+ * Hook to get BCV rate analytics
+ */
+export const useRateAnalytics = () => {
+  return useQuery({
+    queryKey: ['bcv-rate-analytics'],
+    queryFn: (): Promise<import('@/lib/rate-history').RateAnalytics | null> => {
+      RateHistoryManager.initializeWithSampleData();
+      return Promise.resolve(RateHistoryManager.calculateAnalytics());
+    },
+    staleTime: 1000 * 60 * 15, // 15 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
+  });
+};
+
+/**
+ * Auto-start monitoring and initialize history when rates module is imported
  */
 if (typeof window !== 'undefined') {
   // Only in browser environment
   setTimeout(async () => {
     try {
+      // Initialize rate history with sample data if empty
+      RateHistoryManager.initializeWithSampleData();
+
+      // Start rate monitoring
       const { startRateMonitoring } = await import('@/lib/rate-monitor');
       startRateMonitoring();
-      console.log('📡 BCV rate monitoring started automatically');
+      console.log('📡 BCV rate monitoring and history initialized');
     } catch (error) {
       console.warn('Failed to start automatic rate monitoring:', error);
     }
