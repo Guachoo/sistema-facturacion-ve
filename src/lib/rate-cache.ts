@@ -19,7 +19,7 @@ const CACHE_CONFIG = {
   STORAGE_KEY_METADATA: 'bcv_rate_metadata',
 
   // Default fallback rate (conservative estimate)
-  FALLBACK_RATE: 36.50,
+  FALLBACK_RATE: 234.50,
 };
 
 export interface CachedRate extends BcvRate {

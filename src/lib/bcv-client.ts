@@ -11,7 +11,7 @@ const BCV_CONFIG = {
   // Venezuela DolarAPI - Real rates from Venezuelan sources
   PRIMARY_SOURCES: [
     {
-      name: 'Manual BCV Rate (Real: 224.38)',
+      name: 'Manual BCV Rate (Real: 234.50)',
       url: '',
       parser: 'manual'
     },
@@ -32,8 +32,8 @@ const BCV_CONFIG = {
 
   // Manual rate configuration (backup if API fails)
   MANUAL_RATE: {
-    rate: 224.38, // ← Actualizado con tasa BCV real
-    lastUpdate: '2024-11-04',
+    rate: 234.50, // ← Actualizado con tasa BCV real del 13-Nov-2024
+    lastUpdate: '2024-11-13',
     source: 'BCV Manual Update'
   },
 
