@@ -57,7 +57,9 @@ import {
   useHistoricalBcvRates,
   useSealBcvRate,
   useBcvRateAnalytics,
-  useRateChangeMonitor
+  useRateChangeMonitor,
+  useBcvRateHistory,
+  useRateAnalytics
 } from '@/api/rates';
 import { formatNumber, formatDateVE } from '@/lib/formatters';
 import { toast } from 'sonner';
@@ -83,6 +85,10 @@ export function BcvRatesPage() {
   });
   const { data: analytics } = useBcvRateAnalytics(analyticsRange);
   const { data: rateMonitor } = useRateChangeMonitor();
+
+  // New hooks for rate history
+  const { data: rateHistory, isLoading: historyLoading } = useBcvRateHistory(30);
+  const { data: rateAnalytics, isLoading: analyticsLoading } = useRateAnalytics();
 
   const sealRateMutation = useSealBcvRate();
 
@@ -223,7 +229,8 @@ export function BcvRatesPage() {
       <Tabs defaultValue="current" className="w-full">
         <TabsList>
           <TabsTrigger value="current">Tasa Actual</TabsTrigger>
-          <TabsTrigger value="historical">Historial</TabsTrigger>
+          <TabsTrigger value="historical">Historial Original</TabsTrigger>
+          <TabsTrigger value="history">📊 Historial BCV</TabsTrigger>
           <TabsTrigger value="analytics">Análisis</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoreo</TabsTrigger>
         </TabsList>
@@ -591,6 +598,140 @@ export function BcvRatesPage() {
                     </div>
                   </AlertDescription>
                 </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Nueva pestaña de Historial */}
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Historial de Tasas BCV
+              </CardTitle>
+              <CardDescription>
+                Últimas tasas de cambio registradas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Analytics Summary */}
+              {rateAnalytics && !analyticsLoading && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">{rateAnalytics.currentRate} Bs</div>
+                    <div className="text-xs text-muted-foreground">Tasa Actual</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-lg font-semibold">{rateAnalytics.weeklyAverage} Bs</div>
+                    <div className="text-xs text-muted-foreground">Promedio Semanal</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className={`text-lg font-semibold ${rateAnalytics.weeklyChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {rateAnalytics.weeklyChange >= 0 ? '+' : ''}{rateAnalytics.weeklyChange}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">Cambio Semanal</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-lg font-semibold">{rateAnalytics.volatility}</div>
+                    <div className="text-xs text-muted-foreground">Volatilidad</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Historical Rates Table */}
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Cargando historial...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Día</TableHead>
+                        <TableHead className="text-right">Tasa (Bs/USD)</TableHead>
+                        <TableHead>Fuente</TableHead>
+                        <TableHead className="text-right">Variación</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rateHistory && rateHistory.length > 0 ? (
+                        rateHistory.map((entry, index) => {
+                          const previousRate = rateHistory[index + 1]?.rate;
+                          const variation = previousRate ? entry.rate - previousRate : 0;
+                          const variationPercent = previousRate ? ((entry.rate - previousRate) / previousRate) * 100 : 0;
+
+                          return (
+                            <TableRow key={entry.date}>
+                              <TableCell className="font-mono text-sm">
+                                {entry.date}
+                              </TableCell>
+                              <TableCell className="text-sm capitalize">
+                                {entry.weekday}
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold">
+                                {entry.rate.toFixed(2)} Bs
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {entry.source}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {index < rateHistory.length - 1 && (
+                                  <div className={`text-sm font-medium ${variation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {variation >= 0 ? '+' : ''}{variation.toFixed(2)} Bs
+                                    <div className="text-xs text-muted-foreground">
+                                      ({variation >= 0 ? '+' : ''}{variationPercent.toFixed(2)}%)
+                                    </div>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            No hay datos de historial disponibles
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {/* Export Button */}
+                  {rateHistory && rateHistory.length > 0 && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          try {
+                            const { RateHistoryManager } = require('@/lib/rate-history');
+                            const csv = RateHistoryManager.exportToCsv();
+                            const blob = new Blob([csv], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `historial_tasas_bcv_${new Date().toISOString().split('T')[0]}.csv`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            toast.success('Historial exportado exitosamente');
+                          } catch (error) {
+                            toast.error('Error al exportar historial');
+                          }
+                        }}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Exportar CSV
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
