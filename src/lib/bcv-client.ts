@@ -11,11 +11,6 @@ const BCV_CONFIG = {
   // Venezuela DolarAPI - Real rates from Venezuelan sources
   PRIMARY_SOURCES: [
     {
-      name: 'Manual BCV Rate (Real: 234.50)',
-      url: '',
-      parser: 'manual'
-    },
-    {
       name: 'DolarAPI Venezuela BCV (CORS Proxy)',
       url: 'https://api.allorigins.win/get?url=https://ve.dolarapi.com/v1/dolares',
       parser: 'dolarapi_proxy'
@@ -24,6 +19,11 @@ const BCV_CONFIG = {
       name: 'ExchangeRate Host',
       url: 'https://api.exchangerate.host/latest?base=USD&symbols=VES',
       parser: 'exchangehost'
+    },
+    {
+      name: 'Manual BCV Rate (Fallback: 234.50)',
+      url: '',
+      parser: 'manual'
     }
   ],
 
