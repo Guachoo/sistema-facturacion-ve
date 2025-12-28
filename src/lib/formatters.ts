@@ -62,21 +62,47 @@ export const formatDateTimeVE = (date: Date | string): string => {
 };
 
 // RIF formatting and validation
+
+// Función auxiliar para calcular el dígito verificador de RIF/Cédula venezolana
+const calculateRifDigit = (type: string, numbers: string): number => {
+  const typeValue = { J: 1, G: 2, V: 3, E: 4, P: 5 }[type.toUpperCase()] || 3; // Default V
+  const weights = [4, 3, 2, 7, 6, 5, 4, 3, 2];
+
+  let sum = typeValue * weights[0];
+  for (let i = 0; i < numbers.length && i < 8; i++) {
+    sum += parseInt(numbers[i]) * weights[i + 1];
+  }
+
+  const remainder = sum % 11;
+  return remainder < 2 ? remainder : 11 - remainder;
+};
 export const formatRIF = (rif: string): string => {
   // Remove any non-alphanumeric characters
   const cleaned = rif.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
-  // Si empieza con solo números, asumir que es cédula (V-)
+  // Si empieza con solo números, asumir que es cédula (V-) y calcular dígito automáticamente
   if (/^\d/.test(cleaned) && cleaned.length > 0) {
-    if (cleaned.length >= 9) {
-      return `V-${cleaned.slice(0, 8)}-${cleaned[8]}`;
+    if (cleaned.length >= 8) {
+      const numbers = cleaned.slice(0, 8);
+      const checkDigit = calculateRifDigit('V', numbers);
+      return `V-${numbers}-${checkDigit}`;
     }
     return cleaned;
   }
 
-  // Apply RIF format: X-XXXXXXXX-X
-  if (cleaned.length >= 10) {
-    return `${cleaned[0]}-${cleaned.slice(1, 9)}-${cleaned[9]}`;
+  // Apply RIF format: X-XXXXXXXX-X con cálculo automático del dígito
+  if (cleaned.length >= 9) {
+    const type = cleaned[0];
+    const numbers = cleaned.slice(1, 9);
+
+    // Si ya tiene 10 caracteres (incluye dígito), usar el proporcionado
+    if (cleaned.length >= 10) {
+      return `${type}-${numbers}-${cleaned[9]}`;
+    }
+
+    // Si solo tiene 9 caracteres (tipo + 8 números), calcular el dígito automáticamente
+    const checkDigit = calculateRifDigit(type, numbers);
+    return `${type}-${numbers}-${checkDigit}`;
   }
 
   return cleaned;
