@@ -157,26 +157,26 @@ export function CustomersPage() {
 
   const rifValue = watch('rif');
 
-  // Auto-validate RIF when it changes
+  // Auto-validate RIF when it changes - incluso con 8 números para cédulas
   useEffect(() => {
-    if (rifValue && rifValue.length >= 10) {
+    if (rifValue && rifValue.length >= 8) {
       const timeoutId = setTimeout(() => {
         rifValidationMutation.mutate(rifValue, {
           onSuccess: (result) => {
             setRifValidationResult(result);
 
-            // Auto-populate form with TFHKA data if available for cédulas
+            // Auto-populate form with TFHKA data if available para cédulas
             if (result.isValid && result.tfhkaData && rifValue.startsWith('V-')) {
               const tfhkaData = result.tfhkaData;
 
-              // Auto-populate form fields
+              // Auto-populate form fields con datos del SENIAT
               if (tfhkaData.razonSocial) setValue('razonSocial', tfhkaData.razonSocial);
               if (tfhkaData.domicilio) setValue('domicilio', tfhkaData.domicilio);
               if (tfhkaData.telefono) setValue('telefono', tfhkaData.telefono);
               if (tfhkaData.email) setValue('email', tfhkaData.email);
 
-              toast.success('Datos validados con TFHKA', {
-                description: 'La información oficial se ha cargado automáticamente'
+              toast.success('Datos encontrados en SENIAT', {
+                description: `${tfhkaData.razonSocial} - Información oficial cargada`
               });
             }
 
@@ -187,9 +187,13 @@ export function CustomersPage() {
             setShowTfhkaSync(false);
           }
         });
-      }, 500);
+      }, 300);
 
       return () => clearTimeout(timeoutId);
+    } else {
+      // Limpiar resultado si la cédula es muy corta
+      setRifValidationResult(null);
+      setShowTfhkaSync(false);
     }
   }, [rifValue, rifValidationMutation, setValue]);
 
@@ -460,7 +464,7 @@ export function CustomersPage() {
                       {getRifStatusIcon()}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Persona natural: V-12345678-0 | Empresa: J-12345678-9 | Extranjero: E-12345678-0
+                      💡 Solo escribe: V-12345678 (el sistema auto-completa y consulta SENIAT)
                     </p>
                     <div className="flex gap-2">
                       <RifInput

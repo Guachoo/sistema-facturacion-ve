@@ -16,7 +16,7 @@ const simulateTfhkaLookup = async (rif: string): Promise<{
   // Simular delay de red
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Base de datos simulada de cédulas/RIFs reales venezolanos
+  // Base de datos simulada de cédulas/RIFs reales venezolanos para pruebas SENIAT
   const tfhkaDatabase: Record<string, any> = {
     'V-27853152-6': {
       realRif: 'V-27853152-6',
@@ -32,6 +32,29 @@ const simulateTfhkaLookup = async (rif: string): Promise<{
       nombre: 'Carlos Alberto González',
       domicilio: 'Calle Principal, Maracaibo 4001, Zulia',
       telefono: '+58 261 555-0002'
+    },
+    'V-18765432-1': {
+      realRif: 'V-18765432-1',
+      razonSocial: 'PEREZ JOSE RAMON',
+      nombre: 'José Ramón Pérez',
+      domicilio: 'Urbanización Las Mercedes, Caracas 1060',
+      telefono: '+58 414 555-0003',
+      email: 'jose.perez@gmail.com'
+    },
+    'V-23456789-0': {
+      realRif: 'V-23456789-0',
+      razonSocial: 'MARTINEZ ANA BEATRIZ',
+      nombre: 'Ana Beatriz Martínez',
+      domicilio: 'Centro Comercial Sambil, Valencia 2001',
+      telefono: '+58 412 555-0004'
+    },
+    'V-15678901-2': {
+      realRif: 'V-15678901-2',
+      razonSocial: 'GUTIERREZ LUIS FERNANDO',
+      nombre: 'Luis Fernando Gutiérrez',
+      domicilio: 'Av. Universidad, Barquisimeto 3001',
+      telefono: '+58 416 555-0005',
+      email: 'luis.gutierrez@hotmail.com'
     },
     'J-40123456-7': {
       realRif: 'J-40123456-7',
@@ -111,20 +134,43 @@ export const useValidateCustomerRif = () => {
 
       let tfhkaData = undefined;
 
-      // Si el RIF es válido, consultar TFHKA para obtener datos reales
-      if (isValid) {
+      // Para cédulas, intentar consulta SENIAT incluso con solo 8 números
+      if ((isValid || (rif.startsWith('V-') && rif.replace(/[^0-9]/g, '').length >= 8)) &&
+          (rif.startsWith('V-') || rif.startsWith('J-') || rif.startsWith('G-'))) {
         try {
-          logger.info('customers', 'tfhka_lookup', 'Consulting TFHKA for RIF data', { rif: formatted });
+          // Para cédulas V- con solo 8 dígitos, completar el dígito verificador
+          let rifToLookup = formatted;
 
-          // Simular consulta TFHKA - En producción aquí iría la consulta real
-          tfhkaData = await simulateTfhkaLookup(formatted);
+          if (rif.startsWith('V-') && !isValid) {
+            const { formatRIF } = await import('@/lib/formatters');
+            rifToLookup = formatRIF(rif); // Esto auto-completa el dígito
 
-          if (tfhkaData.realRif && tfhkaData.realRif !== formatted) {
-            suggestions.push(`RIF correcto encontrado: ${tfhkaData.realRif}`);
+            // Si después de formatear seguimos sin un RIF válido, abandonar consulta
+            if (!rifToLookup || rifToLookup.length < 12) {
+              throw new Error('Cédula incompleta');
+            }
+          }
+
+          logger.info('customers', 'seniat_lookup', 'Consulting SENIAT for citizen data', {
+            originalRif: rif,
+            rifToLookup
+          });
+
+          // Simular consulta SENIAT - En producción aquí iría la consulta real
+          tfhkaData = await simulateTfhkaLookup(rifToLookup);
+
+          if (tfhkaData.realRif && tfhkaData.realRif !== rifToLookup) {
+            suggestions.push(`Cédula completa: ${tfhkaData.realRif}`);
           }
 
           if (tfhkaData.razonSocial) {
-            suggestions.push(`Datos encontrados: ${tfhkaData.razonSocial}`);
+            suggestions.push(`📋 SENIAT: ${tfhkaData.razonSocial}`);
+
+            // Marcar como válido si encontramos datos SENIAT
+            if (rif.startsWith('V-') && !isValid) {
+              isValid = true;
+              formatted = rifToLookup;
+            }
           }
 
           if (rif.startsWith('J-') || rif.startsWith('G-')) {
@@ -132,9 +178,12 @@ export const useValidateCustomerRif = () => {
           }
 
         } catch (error) {
-          logger.warn('customers', 'tfhka_lookup', 'TFHKA lookup failed, using local validation', { error });
+          logger.warn('customers', 'seniat_lookup', 'SENIAT lookup failed', { error });
           if (rif.startsWith('J-') || rif.startsWith('G-')) {
             suggestions.push('Cliente empresarial: será sincronizado con TFHKA automáticamente');
+          }
+          if (rif.startsWith('V-') && rif.replace(/[^0-9]/g, '').length >= 8) {
+            suggestions.push('💡 Cédula no encontrada en SENIAT - Verifica los números');
           }
         }
       }
