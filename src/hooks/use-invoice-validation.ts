@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { useInvoices } from '@/api/invoices';
+import type { Invoice } from '@/types';
 import {
   validateUniqueInvoiceNumber,
   validateUniqueControlNumber,
@@ -44,7 +45,7 @@ export function useInvoiceValidation({
   excludeId
 }: UseInvoiceValidationProps = {}): UseInvoiceValidationReturn {
 
-  const { data: invoices = [], isLoading: invoicesLoading } = useInvoices();
+  const { data: invoices = [], isLoading: invoicesLoading } = useInvoices() as { data: Invoice[], isLoading: boolean };
 
   const [numberValidation, setNumberValidation] = useState<InvoiceNumberValidation & { isLoading: boolean }>({
     isValid: true,

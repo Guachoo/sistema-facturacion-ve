@@ -276,22 +276,22 @@ export function BcvRatesPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                {analytics?.dailyVariation ? (
+                {rateAnalytics?.dailyVariation ? (
                   <div>
-                    <div className={`text-2xl font-bold ${analytics.dailyVariation.isPositive ? 'text-red-600' : 'text-green-600'}`}>
-                      {analytics.dailyVariation.isPositive ? '+' : ''}{analytics.dailyVariation.percentage}%
+                    <div className={`text-2xl font-bold ${rateAnalytics.dailyVariation.isPositive ? 'text-red-600' : 'text-green-600'}`}>
+                      {rateAnalytics.dailyVariation.isPositive ? '+' : ''}{rateAnalytics.dailyVariation.percentage}%
                     </div>
                     <p className="text-xs text-muted-foreground">
                       vs. día anterior
                     </p>
                     <div className="flex items-center gap-1 mt-2">
-                      {analytics.dailyVariation.isPositive ? (
+                      {rateAnalytics.dailyVariation.isPositive ? (
                         <TrendingUp className="h-4 w-4 text-red-600" />
                       ) : (
                         <TrendingDown className="h-4 w-4 text-green-600" />
                       )}
                       <span className="text-xs text-muted-foreground">
-                        {analytics.dailyVariation.isPositive ? 'Devaluación' : 'Revaluación'}
+                        {rateAnalytics.dailyVariation.isPositive ? 'Devaluación' : 'Revaluación'}
                       </span>
                     </div>
                   </div>

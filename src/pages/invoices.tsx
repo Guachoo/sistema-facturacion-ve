@@ -25,8 +25,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, Search, Download, FileText, Calendar as CalendarIcon, FileEdit, FileMinus, Eye, Shield, AlertTriangle, X, CheckCircle, Mail } from 'lucide-react';
 import { useInvoices, useVoidInvoice, refreshMockInvoices } from '@/api/invoices';
-import { useCreateCreditNote, useCreateDebitNote, useCancelInvoice } from '@/api/invoices-extended';
-import { formatVES, formatUSD, formatDateVE } from '@/lib/formatters';
+import { formatVES, formatDateVE } from '@/lib/formatters';
 import { useTablePriceFormatter } from '@/hooks/use-price-formatter';
 import { generateInvoicePDF } from '@/lib/pdf-generator';
 import { useSendInvoiceEmail, useSendStatusChangeNotification } from '@/hooks/use-email-service';
@@ -58,14 +57,14 @@ export function InvoicesPage() {
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   // const [fiscalStatusFilter, setFiscalStatusFilter] = useState<string>('all');
 
-  const { data: invoices = [], isLoading } = useInvoices();
+  const { data: invoices = [], isLoading } = useInvoices() as { data: Invoice[], isLoading: boolean };
 
   // Debug: log invoices data
   useEffect(() => {
     console.log('📊 InvoicesPage: Datos recibidos:', {
       totalFacturas: invoices.length,
       loading: isLoading,
-      primerasFacturas: invoices.slice(0, 3).map(inv => ({ numero: inv.numero, total: inv.total }))
+      primerasFacturas: invoices.slice(0, 3).map((inv: Invoice) => ({ numero: inv.numero, total: inv.total }))
     });
   }, [invoices, isLoading]);
   const voidInvoiceMutation = useVoidInvoice();
@@ -100,11 +99,11 @@ export function InvoicesPage() {
 
   const visibleInvoiceAlerts = invoiceAlerts.filter(alert => !dismissedAlerts.has(alert.id));
 
-  const filteredInvoices = invoices.filter(invoice => {
+  const filteredInvoices = invoices.filter((invoice: Invoice) => {
     const matchesSearch =
       invoice.numero.toLowerCase().includes(search.toLowerCase()) ||
-      invoice.receptor.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
-      invoice.receptor.rif.toLowerCase().includes(search.toLowerCase());
+      (invoice.receptor.razonSocial || invoice.receptor.nombre).toLowerCase().includes(search.toLowerCase()) ||
+      invoice.receptor.identificacion.toLowerCase().includes(search.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || invoice.estado?.toLowerCase() === statusFilter.toLowerCase();
     const matchesChannel = channelFilter === 'all' || invoice.canal?.toLowerCase() === channelFilter.toLowerCase();
@@ -134,10 +133,13 @@ export function InvoicesPage() {
     try {
       // Buscar datos del cliente
       const customer = {
-        id: invoice.cliente_id,
-        nombre: invoice.receptor?.razonSocial || '',
-        razonSocial: invoice.receptor?.razonSocial || '',
-        email: invoice.receptor?.email || 'cliente@ejemplo.com' // Fallback
+        id: invoice.cliente_id || invoice.id || '',
+        nombre: invoice.receptor?.razonSocial || invoice.receptor?.nombre || '',
+        razonSocial: invoice.receptor?.razonSocial || invoice.receptor?.nombre || '',
+        email: invoice.receptor?.email || invoice.receptor?.correo || 'cliente@ejemplo.com', // Fallback
+        rif: invoice.receptor?.identificacion || '',
+        domicilio: invoice.receptor?.domicilio || '',
+        tipoContribuyente: 'ordinario' as const
       };
 
       await sendEmailMutation.mutateAsync({ invoice, customer });
@@ -146,13 +148,6 @@ export function InvoicesPage() {
     }
   };
 
-  const handleDownloadAndEmail = (invoice: Invoice) => {
-    // Descargar PDF
-    handleDownloadPDF(invoice);
-
-    // Enviar por email automáticamente
-    handleSendInvoiceEmail(invoice);
-  };
 
   // Fiscal and cancellation functions
   const handleVoidInvoice = async () => {
@@ -172,10 +167,13 @@ export function InvoicesPage() {
       // Enviar notificación de cambio de estado
       try {
         const customer = {
-          id: selectedInvoice.cliente_id,
-          nombre: selectedInvoice.receptor?.razonSocial || '',
-          razonSocial: selectedInvoice.receptor?.razonSocial || '',
-          email: selectedInvoice.receptor?.email || 'cliente@ejemplo.com'
+          id: selectedInvoice.cliente_id || selectedInvoice.id || '',
+          nombre: selectedInvoice.receptor?.razonSocial || selectedInvoice.receptor?.nombre || '',
+          razonSocial: selectedInvoice.receptor?.razonSocial || selectedInvoice.receptor?.nombre || '',
+          email: selectedInvoice.receptor?.email || selectedInvoice.receptor?.correo || 'cliente@ejemplo.com',
+          rif: selectedInvoice.receptor?.identificacion || '',
+          domicilio: selectedInvoice.receptor?.domicilio || '',
+          tipoContribuyente: 'ordinario' as const
         };
 
         await sendStatusNotificationMutation.mutateAsync({
@@ -294,13 +292,13 @@ export function InvoicesPage() {
     }
   };
 
-  const totalEmitidas = invoices.filter(inv => inv.estado?.toLowerCase() === 'emitida').length;
-  const totalNotas = invoices.filter(inv =>
+  const totalEmitidas = invoices.filter((inv: Invoice) => inv.estado?.toLowerCase() === 'emitida').length;
+  const totalNotas = invoices.filter((inv: Invoice) =>
     inv.estado?.toLowerCase() === 'nota_credito' || inv.estado?.toLowerCase() === 'nota_debito'
   ).length;
   const totalVentasMes = invoices
-    .filter(inv => inv.estado?.toLowerCase() === 'emitida')
-    .reduce((sum, inv) => sum + inv.total, 0);
+    .filter((inv: Invoice) => inv.estado?.toLowerCase() === 'emitida')
+    .reduce((sum: number, inv: Invoice) => sum + inv.total, 0);
 
   return (
     <div className="space-y-6">
@@ -564,7 +562,7 @@ export function InvoicesPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredInvoices.map((invoice) => (
+                filteredInvoices.map((invoice: Invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell>
                       <div>
@@ -577,9 +575,9 @@ export function InvoicesPage() {
                     <TableCell>{formatDateVE(invoice.fecha)}</TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{invoice.receptor.razonSocial}</div>
+                        <div className="font-medium">{invoice.receptor.razonSocial || invoice.receptor.nombre}</div>
                         <div className="text-sm text-muted-foreground font-mono">
-                          {invoice.receptor.rif}
+                          {invoice.receptor.identificacion}
                         </div>
                       </div>
                     </TableCell>
@@ -722,7 +720,7 @@ export function InvoicesPage() {
             </CardContent>
           </Card>
         ) : (
-          filteredInvoices.map((invoice) => (
+          filteredInvoices.map((invoice: Invoice) => (
             <Card key={invoice.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-2 sm:p-3">
                 <div className="space-y-1 sm:space-y-2">
@@ -763,8 +761,8 @@ export function InvoicesPage() {
 
                   {/* Client compact */}
                   <div className="text-xs text-muted-foreground">
-                    <div className="truncate" title={invoice.receptor.razonSocial}>
-                      {invoice.receptor.razonSocial}
+                    <div className="truncate" title={invoice.receptor.razonSocial || invoice.receptor.nombre}>
+                      {invoice.receptor.razonSocial || invoice.receptor.nombre}
                     </div>
                   </div>
 
@@ -832,7 +830,7 @@ export function InvoicesPage() {
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="font-medium">{selectedInvoice.numero}</div>
                 <div className="text-sm text-muted-foreground">
-                  {selectedInvoice.receptor.razonSocial}
+                  {selectedInvoice.receptor.razonSocial || selectedInvoice.receptor.nombre}
                 </div>
                 <div className="text-sm font-mono">
                   Total: {formatVES(selectedInvoice.total)}
@@ -893,7 +891,7 @@ export function InvoicesPage() {
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="font-medium">Factura: {selectedInvoice.numero}</div>
                 <div className="text-sm text-muted-foreground">
-                  {selectedInvoice.receptor.razonSocial}
+                  {selectedInvoice.receptor.razonSocial || selectedInvoice.receptor.nombre}
                 </div>
                 <div className="text-sm font-mono">
                   Total: {formatVES(selectedInvoice.total)}

@@ -121,6 +121,8 @@ export interface FiscalReceptor {
   domicilio: string;
   correo?: string;
   telefono?: string;
+  razonSocial?: string;
+  email?: string;
 }
 
 export interface InformacionAdicional {
@@ -143,10 +145,12 @@ export interface Invoice {
   numeroDocumento?: string; // Formato D-22975
   transaction_id?: string; // ✅ NUEVO - ID transaccional estructurado
   numeroControl: string;
+  serie?: string; // Serie de la factura (A, B, C, etc.)
   fecha: string;
   horaEmision?: string; // Hora formato "04:52:00 pm"
   fechaVencimiento?: string;
   moneda?: 'VES' | 'USD';
+  cliente_id?: string;
 
   // ESTRUCTURA SEGÚN PDF DEMOSTRATIVO
   emisor: FiscalEmisor;
@@ -201,6 +205,8 @@ export interface BcvRate {
   rate: number;
   source: string;
   lastUpdate?: string;
+  sealed?: boolean;
+  validated?: boolean;
 }
 
 export interface SalesBookEntry {

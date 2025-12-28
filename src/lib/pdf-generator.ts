@@ -1,8 +1,14 @@
 import jsPDF from 'jspdf';
 import { formatVES, formatUSD, formatDateVE, formatNumber } from './formatters';
 import type { Invoice } from '@/types';
+import { generateGRUInvoicePDF } from './pdf-generator-gru';
 
 export const generateInvoicePDF = (invoice: Invoice): void => {
+  // Usar el generador de GRU por defecto
+  generateGRUInvoicePDF(invoice);
+  return;
+
+  // Código legacy (mantenido para referencia)
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   const margin = 20;

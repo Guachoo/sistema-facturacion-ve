@@ -23,6 +23,10 @@ export interface RateAnalytics {
   trend: 'up' | 'down' | 'stable';
   highestRate: RateHistoryEntry;
   lowestRate: RateHistoryEntry;
+  dailyVariation: {
+    percentage: number;
+    isPositive: boolean;
+  };
 }
 
 // Storage key para el historial
@@ -141,6 +145,11 @@ export class RateHistoryManager {
     const highestRate = sortedByRate[0];
     const lowestRate = sortedByRate[sortedByRate.length - 1];
 
+    // Calcular variación diaria
+    const dailyChange = history.length >= 2
+      ? ((currentRate - history[1].rate) / history[1].rate) * 100
+      : 0;
+
     return {
       currentRate,
       weeklyAverage: Number(weeklyAverage.toFixed(2)),
@@ -150,7 +159,11 @@ export class RateHistoryManager {
       volatility: Number(volatility.toFixed(2)),
       trend,
       highestRate,
-      lowestRate
+      lowestRate,
+      dailyVariation: {
+        percentage: Number(dailyChange.toFixed(2)),
+        isPositive: dailyChange > 0
+      }
     };
   }
 

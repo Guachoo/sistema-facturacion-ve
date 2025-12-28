@@ -348,7 +348,7 @@ export const useItems = () => {
         console.log('Items fetched via REST API:', data?.length || 0, 'records');
 
         // Map database items
-        const dbItems = Array.isArray(data) ? data.map(row => ({
+        const dbItems = Array.isArray(data) ? data.map((row: any) => ({
           id: row.id,
           codigo: row.codigo,
           descripcion: row.descripcion,
@@ -371,7 +371,7 @@ export const useItems = () => {
 
         // TEMPORARY: Use mock data for better pricing display
         // If database items have zero prices, supplement with mock data
-        if (dbItems.length > 0 && dbItems.every(item => item.precioBase === 0)) {
+        if (dbItems.length > 0 && dbItems.every((item: Item) => item.precioBase === 0)) {
           console.log('Database items have zero prices, using mock data for demonstration');
           return mockItems;
         }
