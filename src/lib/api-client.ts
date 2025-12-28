@@ -751,8 +751,10 @@ export const notificationApi = {
     try {
       logger.info('notifications', 'get_alerts', 'Getting fiscal alerts', filtros);
 
-      // Simular alertas existentes
-      const mockAlertas: AlertaFiscal[] = [
+      // Simular alertas existentes - solo en desarrollo
+      const mockAlertas: AlertaFiscal[] = import.meta.env.PROD
+        ? [] // Producción: sin alertas de prueba
+        : [ // Desarrollo: alertas para testing
         {
           id: 'ALT_001',
           tipo: 'documento_rechazado_seniat',
@@ -790,7 +792,7 @@ export const notificationApi = {
           notificado_a: ['admin_1'],
           canales_notificacion: ['email', 'dashboard', 'push']
         }
-      ];
+      ]; // Fin del array de desarrollo - solo visible en modo dev
 
       // Aplicar filtros si existen
       let alertasFiltradas = mockAlertas;

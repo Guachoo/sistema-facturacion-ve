@@ -14,7 +14,7 @@ export interface TfhkaAuthRequest {
   usuario: string;
   clave: string;
   rif_emisor: string;
-  ambiente: 'produccion' | 'pruebas';
+  ambiente: 'produccion' | 'homologacion' | 'pruebas';
 }
 
 export interface TfhkaAuthResponse {
@@ -82,16 +82,23 @@ export interface TfhkaStatusResponse {
 
 interface TfhkaConfig {
   baseUrl: string;
-  ambiente: 'produccion' | 'pruebas';
+  ambiente: 'produccion' | 'homologacion' | 'pruebas';
   timeout: number;
   retryAttempts: number;
   retryDelay: number;
 }
 
-const TFHKA_CONFIG: Record<'produccion' | 'pruebas', TfhkaConfig> = {
+const TFHKA_CONFIG: Record<'produccion' | 'homologacion' | 'pruebas', TfhkaConfig> = {
   produccion: {
     baseUrl: 'https://contribuyente.seniat.gob.ve/getdedocumentoset/api',
     ambiente: 'produccion',
+    timeout: 30000,
+    retryAttempts: 3,
+    retryDelay: 2000
+  },
+  homologacion: {
+    baseUrl: 'https://contribuyente.seniat.gob.ve/getdedocumentoset/api/staging',
+    ambiente: 'homologacion',
     timeout: 30000,
     retryAttempts: 3,
     retryDelay: 2000
@@ -114,7 +121,7 @@ export class TfhkaClient {
   private authToken: string | null = null;
   private tokenExpiry: Date | null = null;
 
-  constructor(ambiente: 'produccion' | 'pruebas' = 'pruebas') {
+  constructor(ambiente: 'produccion' | 'homologacion' | 'pruebas' = 'pruebas') {
     this.config = TFHKA_CONFIG[ambiente];
     logger.info('tfhka', 'init', 'TFHKA Client initialized', { ambiente });
   }
@@ -428,7 +435,7 @@ export class TfhkaClient {
 
 let tfhkaClientInstance: TfhkaClient | null = null;
 
-export function getTfhkaClient(ambiente?: 'produccion' | 'pruebas'): TfhkaClient {
+export function getTfhkaClient(ambiente?: 'produccion' | 'homologacion' | 'pruebas'): TfhkaClient {
   if (!tfhkaClientInstance || (ambiente && tfhkaClientInstance.getAuthStatus())) {
     tfhkaClientInstance = new TfhkaClient(ambiente);
   }
