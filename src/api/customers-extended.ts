@@ -56,6 +56,14 @@ const simulateTfhkaLookup = async (rif: string): Promise<{
       telefono: '+58 416 555-0005',
       email: 'luis.gutierrez@hotmail.com'
     },
+    'V-08831044-5': {
+      realRif: 'V-08831044-5',
+      razonSocial: 'MENDEZ PEDRO ANTONIO',
+      nombre: 'Pedro Antonio Méndez',
+      domicilio: 'Av. Francisco de Miranda, Los Palos Grandes, Caracas',
+      telefono: '+58 412 555-8831',
+      email: 'pedro.mendez@outlook.com'
+    },
     'J-40123456-7': {
       realRif: 'J-40123456-7',
       razonSocial: 'CORPORACION DEMO VENEZUELA C.A.',
