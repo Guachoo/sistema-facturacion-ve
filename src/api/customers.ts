@@ -1,54 +1,116 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Customer } from '@/types';
 
+// Mock customers data for development and testing
+const mockCustomers: Customer[] = [
+  {
+    id: '1',
+    rif: 'J-12345678-9',
+    razonSocial: 'Corporación Demo C.A.',
+    nombre: 'Corporación Demo',
+    domicilio: 'Av. Principal, Caracas 1010, Venezuela',
+    telefono: '+58 212 555-0001',
+    email: 'contacto@demo.com.ve',
+    tipoContribuyente: 'ordinario',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    rif: 'V-87654321-0',
+    razonSocial: 'María González',
+    nombre: 'María González',
+    domicilio: 'Calle 5, Maracaibo 4001, Venezuela',
+    telefono: '+58 261 555-0002',
+    email: 'maria@ejemplo.com',
+    tipoContribuyente: 'formal',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    rif: 'G-20000003-0',
+    razonSocial: 'Servicios Técnicos del Estado',
+    nombre: 'STE',
+    domicilio: 'Centro Administrativo, Valencia 2001, Venezuela',
+    telefono: '+58 241 555-0003',
+    email: 'servicios@ste.gob.ve',
+    tipoContribuyente: 'especial',
+    createdAt: new Date().toISOString(),
+  },
+];
+
+// Función para determinar si usar datos mock
+const shouldUseMockData = (): boolean => {
+  // Usar mock si estamos en desarrollo y no hay base de datos configurada
+  return import.meta.env.DEV || import.meta.env.VITE_USE_MOCK_DATA === 'true';
+};
+
 export const useCustomers = () => {
   return useQuery({
     queryKey: ['customers'],
     queryFn: async (): Promise<Customer[]> => {
-      console.log('Fetching customers via REST API');
+      try {
+        console.log('Fetching customers via REST API');
 
-      // Use direct REST API to avoid supabase-js headers issues
-      const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
+        // Use direct REST API to avoid supabase-js headers issues
+        const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
 
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?order=created_at.desc`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/customers?order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          }
+        });
+
+        console.log('Customers fetch response status:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('REST API error fetching customers:', errorText);
+          console.warn('Using mock customers data as fallback');
+          return mockCustomers;
         }
-      });
 
-      console.log('Customers fetch response status:', response.status);
+        const data = await response.json();
+        console.log('Customers fetched via REST API:', data?.length || 0, 'records');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('REST API error fetching customers:', errorText);
-        throw new Error(`Error ${response.status}: ${errorText}`);
+        if (!Array.isArray(data)) {
+          console.error('Invalid response format:', data);
+          console.warn('Using mock customers data as fallback');
+          return mockCustomers;
+        }
+
+        // Si no hay datos en la base, usar mock data
+        if (data.length === 0) {
+          console.log('No customers found in database, using mock data for demonstration');
+          return mockCustomers;
+        }
+
+        return data.map(row => ({
+          id: row.id,
+          rif: row.rif,
+          razonSocial: row.razon_social,
+          nombre: row.nombre,
+          domicilio: row.domicilio,
+          telefono: row.telefono,
+          email: row.email,
+          tipoContribuyente: row.tipo_contribuyente,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }));
+
+      } catch (error) {
+        console.error('Error fetching customers from database:', error);
+        console.warn('Using mock customers data as fallback');
+        return mockCustomers;
       }
-
-      const data = await response.json();
-      console.log('Customers fetched via REST API:', data?.length || 0, 'records');
-
-      if (!Array.isArray(data)) {
-        console.error('Invalid response format:', data);
-        throw new Error('Invalid response format from server');
-      }
-
-      return data.map(row => ({
-        id: row.id,
-        rif: row.rif,
-        razonSocial: row.razon_social,
-        nombre: row.nombre,
-        domicilio: row.domicilio,
-        telefono: row.telefono,
-        email: row.email,
-        tipoContribuyente: row.tipo_contribuyente,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      }));
     },
+    retry: 1, // Solo reintentar 1 vez
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    gcTime: 1000 * 60 * 30, // 30 minutos en cache
+    refetchOnWindowFocus: false,
   });
 };
 

@@ -440,9 +440,12 @@ export function CustomersPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="rif" className="flex items-center gap-2">
-                      RIF *
+                      RIF/Cédula *
                       {getRifStatusIcon()}
                     </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Persona natural: V-12345678-0 | Empresa: J-12345678-9 | Extranjero: E-12345678-0
+                    </p>
                     <div className="flex gap-2">
                       <RifInput
                         id="rif"

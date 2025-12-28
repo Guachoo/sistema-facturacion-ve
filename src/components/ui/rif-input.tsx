@@ -22,7 +22,7 @@ const RifInput = forwardRef<HTMLInputElement, RifInputProps>(
         value={value}
         onChange={handleChange}
         className={cn(className)}
-        placeholder="J-12345678-9"
+        placeholder="V-12345678-0 o J-12345678-9"
         maxLength={12}
         {...props}
       />

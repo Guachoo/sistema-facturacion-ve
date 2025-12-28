@@ -30,8 +30,17 @@ export const useValidateCustomerRif = () => {
       const suggestions: string[] = [];
 
       if (!isValidFormat) {
-        suggestions.push('El formato debe ser: J-12345678-9 (Tipo-Número-Dígito)');
-        suggestions.push('Tipos válidos: J (Jurídica), G (Gobierno), V (Venezolano), E (Extranjero), P (Pasaporte)');
+        // Mensaje específico si solo escribió números
+        if (/^\d+$/.test(rif.replace(/[-\s]/g, ''))) {
+          suggestions.push(`Para cédula natural, use: V-${rif.replace(/[-\s]/g, '').substring(0, 8)}-X`);
+          suggestions.push(`Para empresa, use: J-${rif.replace(/[-\s]/g, '').substring(0, 8)}-X`);
+        } else {
+          suggestions.push('Formatos válidos:');
+          suggestions.push('• Persona natural: V-12345678-0');
+          suggestions.push('• Empresa: J-12345678-9');
+          suggestions.push('• Extranjero: E-12345678-0');
+          suggestions.push('• Gobierno: G-20000000-0');
+        }
       }
 
       if (isValidFormat && !isValid) {

@@ -64,12 +64,21 @@ export const formatDateTimeVE = (date: Date | string): string => {
 // RIF formatting and validation
 export const formatRIF = (rif: string): string => {
   // Remove any non-alphanumeric characters
-  const cleaned = rif.replace(/[^A-Za-z0-9]/g, '');
-  
+  const cleaned = rif.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+  // Si empieza con solo números, asumir que es cédula (V-)
+  if (/^\d/.test(cleaned) && cleaned.length > 0) {
+    if (cleaned.length >= 9) {
+      return `V-${cleaned.slice(0, 8)}-${cleaned[8]}`;
+    }
+    return cleaned;
+  }
+
   // Apply RIF format: X-XXXXXXXX-X
   if (cleaned.length >= 10) {
     return `${cleaned[0]}-${cleaned.slice(1, 9)}-${cleaned[9]}`;
   }
+
   return cleaned;
 };
 
