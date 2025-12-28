@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
-  Shield,
   Activity,
   TrendingUp,
   AlertTriangle,
@@ -356,7 +355,7 @@ export function AuditDashboardPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={(entry: any) => `${entry.name} ${(entry.percent * 100).toFixed(0)}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -385,12 +384,11 @@ export function AuditDashboardPage() {
                     tick={{ fontSize: 10 }}
                     angle={-45}
                     textAnchor="end"
-                    formatter={(value) => actionLabels[value as AuditAction]}
                   />
                   <YAxis />
                   <Tooltip
-                    formatter={(value, name) => [value, 'Eventos']}
-                    labelFormatter={(value) => actionLabels[value as AuditAction]}
+                    formatter={(value: number) => [value, 'Eventos']}
+                    labelFormatter={(value: string) => actionLabels[value as AuditAction]}
                   />
                   <Bar dataKey="count" fill="#3b82f6" />
                 </BarChart>

@@ -14,7 +14,6 @@ import {
   Code,
   Copy,
   ChevronDown,
-  ChevronRight,
   Key,
   Webhook,
   Book,
@@ -406,24 +405,13 @@ const WEBHOOK_EVENTS = [
 ];
 
 export function ApiDocumentationPage() {
-  const [selectedEndpoint, setSelectedEndpoint] = useState<ApiEndpoint | null>(null);
   const [testApiKey, setTestApiKey] = useState('test-key-123');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copiado al portapapeles');
   };
 
-  const toggleSection = (section: string) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(section)) {
-      newExpanded.delete(section);
-    } else {
-      newExpanded.add(section);
-    }
-    setExpandedSections(newExpanded);
-  };
 
   const generateCurlExample = (endpoint: ApiEndpoint) => {
     const hasBody = endpoint.method === 'POST' || endpoint.method === 'PUT';
@@ -443,13 +431,6 @@ export function ApiDocumentationPage() {
   };
 
   const MethodBadge = ({ method }: { method: string }) => {
-    const variants = {
-      GET: 'default',
-      POST: 'default',
-      PUT: 'secondary',
-      DELETE: 'destructive'
-    };
-
     const colors = {
       GET: 'bg-green-100 text-green-800',
       POST: 'bg-blue-100 text-blue-800',
