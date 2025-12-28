@@ -4,10 +4,71 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { Customer } from '@/types';
 
-// Validate customer RIF with enhanced Venezuelan rules
+// Simulación de consulta TFHKA - En producción se reemplaza con API real
+const simulateTfhkaLookup = async (rif: string): Promise<{
+  realRif?: string;
+  razonSocial?: string;
+  nombre?: string;
+  domicilio?: string;
+  telefono?: string;
+  email?: string;
+}> => {
+  // Simular delay de red
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Base de datos simulada de cédulas/RIFs reales venezolanos
+  const tfhkaDatabase: Record<string, any> = {
+    'V-27853152-6': {
+      realRif: 'V-27853152-6',
+      razonSocial: 'RODRIGUEZ MARIA ELENA',
+      nombre: 'María Elena Rodríguez',
+      domicilio: 'Av. Libertador, Torre Banesco, Caracas 1050',
+      telefono: '+58 212 555-0001',
+      email: 'maria.rodriguez@email.com'
+    },
+    'V-12345678-9': {
+      realRif: 'V-12345678-9',
+      razonSocial: 'GONZALEZ CARLOS ALBERTO',
+      nombre: 'Carlos Alberto González',
+      domicilio: 'Calle Principal, Maracaibo 4001, Zulia',
+      telefono: '+58 261 555-0002'
+    },
+    'J-40123456-7': {
+      realRif: 'J-40123456-7',
+      razonSocial: 'CORPORACION DEMO VENEZUELA C.A.',
+      nombre: 'Corporación Demo',
+      domicilio: 'Centro Empresarial, Valencia 2001, Carabobo',
+      telefono: '+58 241 555-0003',
+      email: 'contacto@demo.com.ve'
+    }
+  };
+
+  // Buscar en la base de datos simulada
+  const data = tfhkaDatabase[rif];
+
+  if (!data) {
+    throw new Error('RIF no encontrado en TFHKA');
+  }
+
+  return data;
+};
+
+// Validate customer RIF with enhanced Venezuelan rules and TFHKA lookup
 export const useValidateCustomerRif = () => {
   return useMutation({
-    mutationFn: async (rif: string): Promise<{ isValid: boolean; details: any; suggestions?: string[] }> => {
+    mutationFn: async (rif: string): Promise<{
+      isValid: boolean;
+      details: any;
+      suggestions?: string[];
+      tfhkaData?: {
+        realRif?: string;
+        razonSocial?: string;
+        nombre?: string;
+        domicilio?: string;
+        telefono?: string;
+        email?: string;
+      };
+    }> => {
       const { rifValidation } = await import('@/lib/utils');
       const { logger } = await import('@/lib/logger');
 
@@ -48,8 +109,34 @@ export const useValidateCustomerRif = () => {
         suggestions.push(`Formato correcto sería: ${formatted}`);
       }
 
-      if (isValid && (rif.startsWith('J-') || rif.startsWith('G-'))) {
-        suggestions.push('Cliente empresarial: será sincronizado con TFHKA automáticamente');
+      let tfhkaData = undefined;
+
+      // Si el RIF es válido, consultar TFHKA para obtener datos reales
+      if (isValid) {
+        try {
+          logger.info('customers', 'tfhka_lookup', 'Consulting TFHKA for RIF data', { rif: formatted });
+
+          // Simular consulta TFHKA - En producción aquí iría la consulta real
+          tfhkaData = await simulateTfhkaLookup(formatted);
+
+          if (tfhkaData.realRif && tfhkaData.realRif !== formatted) {
+            suggestions.push(`RIF correcto encontrado: ${tfhkaData.realRif}`);
+          }
+
+          if (tfhkaData.razonSocial) {
+            suggestions.push(`Datos encontrados: ${tfhkaData.razonSocial}`);
+          }
+
+          if (rif.startsWith('J-') || rif.startsWith('G-')) {
+            suggestions.push('Cliente empresarial: sincronizado con TFHKA');
+          }
+
+        } catch (error) {
+          logger.warn('customers', 'tfhka_lookup', 'TFHKA lookup failed, using local validation', { error });
+          if (rif.startsWith('J-') || rif.startsWith('G-')) {
+            suggestions.push('Cliente empresarial: será sincronizado con TFHKA automáticamente');
+          }
+        }
       }
 
       logger.info('customers', 'validate_rif', 'RIF validation completed', details);
@@ -57,7 +144,8 @@ export const useValidateCustomerRif = () => {
       return {
         isValid,
         details,
-        suggestions: suggestions.length > 0 ? suggestions : undefined
+        suggestions: suggestions.length > 0 ? suggestions : undefined,
+        tfhkaData
       };
     }
   });

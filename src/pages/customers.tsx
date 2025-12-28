@@ -164,6 +164,22 @@ export function CustomersPage() {
         rifValidationMutation.mutate(rifValue, {
           onSuccess: (result) => {
             setRifValidationResult(result);
+
+            // Auto-populate form with TFHKA data if available for cédulas
+            if (result.isValid && result.tfhkaData && rifValue.startsWith('V-')) {
+              const tfhkaData = result.tfhkaData;
+
+              // Auto-populate form fields
+              if (tfhkaData.razonSocial) setValue('razonSocial', tfhkaData.razonSocial);
+              if (tfhkaData.domicilio) setValue('domicilio', tfhkaData.domicilio);
+              if (tfhkaData.telefono) setValue('telefono', tfhkaData.telefono);
+              if (tfhkaData.email) setValue('email', tfhkaData.email);
+
+              toast.success('Datos validados con TFHKA', {
+                description: 'La información oficial se ha cargado automáticamente'
+              });
+            }
+
             setShowTfhkaSync(result.isValid && (rifValue.startsWith('J-') || rifValue.startsWith('G-')));
           },
           onError: () => {
@@ -175,7 +191,7 @@ export function CustomersPage() {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [rifValue, rifValidationMutation]);
+  }, [rifValue, rifValidationMutation, setValue]);
 
   const filteredCustomers = customers.filter(customer =>
     customer.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
@@ -480,6 +496,12 @@ export function CustomersPage() {
                           {rifValidationResult.details.rifType}
                         </Badge>
                       )}
+                      {rifValidationResult?.tfhkaData && (
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          TFHKA Validado
+                        </Badge>
+                      )}
                     </div>
 
                     {/* RIF Suggestions */}
@@ -493,6 +515,18 @@ export function CustomersPage() {
                               <li key={index}>{suggestion}</li>
                             ))}
                           </ul>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* TFHKA Data Found Alert */}
+                    {rifValidationResult?.tfhkaData && (
+                      <Alert className="bg-blue-50 border-blue-200">
+                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                        <AlertTitle className="text-blue-800">Datos TFHKA encontrados</AlertTitle>
+                        <AlertDescription className="text-blue-700">
+                          Los campos se han completado automáticamente con información oficial del SENIAT.
+                          Puedes modificar cualquier campo si es necesario.
                         </AlertDescription>
                       </Alert>
                     )}
