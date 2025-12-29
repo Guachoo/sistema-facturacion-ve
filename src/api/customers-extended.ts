@@ -33,38 +33,11 @@ export const useValidateCustomerRif = () => {
         rifType: parsed?.type ? rifValidation.types[parsed.type as keyof typeof rifValidation.types] : null
       };
 
+      // Sistema convencional: mínimas sugerencias, aceptar lo que escriba la cajera
       const suggestions: string[] = [];
 
-      if (!isValidFormat) {
-        // Mensaje específico si solo escribió números
-        if (/^\d+$/.test(rif.replace(/[-\s]/g, ''))) {
-          suggestions.push(`Para cédula natural, use: V-${rif.replace(/[-\s]/g, '').substring(0, 8)}-X`);
-          suggestions.push(`Para empresa, use: J-${rif.replace(/[-\s]/g, '').substring(0, 8)}-X`);
-        } else {
-          suggestions.push('Formatos válidos:');
-          suggestions.push('• Persona natural: V-12345678-0');
-          suggestions.push('• Empresa: J-12345678-9');
-          suggestions.push('• Extranjero: E-12345678-0');
-          suggestions.push('• Gobierno: G-20000000-0');
-        }
-      }
-
-      if (isValidFormat && !isValid) {
-        suggestions.push('El dígito verificador es incorrecto');
-        suggestions.push(`Formato correcto sería: ${formatted}`);
-      }
-
-      // Sistema convencional: solo completar dígito verificador si es necesario
-      if (!isValid && isValidFormat) {
-        const { formatRIF } = await import('@/lib/formatters');
-        const autoCompleted = formatRIF(rif);
-
-        if (autoCompleted && autoCompleted !== rif) {
-          suggestions.push(`Dígito verificador: ${autoCompleted}`);
-          formatted = autoCompleted;
-          isValid = true;
-        }
-      }
+      // Sistema convencional: aceptar exactamente lo que escriba la cajera
+      // Sin auto-cálculo de dígitos verificadores
 
       logger.info('customers', 'validate_rif', 'RIF validation completed', details);
 

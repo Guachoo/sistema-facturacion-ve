@@ -92,7 +92,7 @@ const estadoConfig = {
 };
 
 const customerSchema = z.object({
-  rif: z.string().min(1, 'RIF es requerido').refine(validateRIF, 'Formato de RIF inválido'),
+  rif: z.string().min(1, 'RIF es requerido'),
   razonSocial: z.string().min(1, 'Razón social es requerida'),
   nombre: z.string().optional(),
   domicilio: z.string().min(1, 'Domicilio es requerido'),
@@ -448,7 +448,7 @@ export function CustomersPage() {
                       {getRifStatusIcon()}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Persona natural: V-12345678 | Empresa: J-12345678 (el sistema completa el dígito automáticamente)
+                      Escriba el RIF/Cédula exactamente como desee (ej: V-27853152, J-123456789, etc.)
                     </p>
                     <div className="flex gap-2">
                       <RifInput
