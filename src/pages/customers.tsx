@@ -157,30 +157,14 @@ export function CustomersPage() {
 
   const rifValue = watch('rif');
 
-  // Auto-validate RIF when it changes - incluso con 8 números para cédulas
+  // Auto-validate RIF when it changes - Sistema convencional
   useEffect(() => {
     if (rifValue && rifValue.length >= 8) {
       const timeoutId = setTimeout(() => {
         rifValidationMutation.mutate(rifValue, {
           onSuccess: (result) => {
             setRifValidationResult(result);
-
-            // Auto-populate form with TFHKA data if available para cédulas
-            if (result.isValid && result.tfhkaData && rifValue.startsWith('V-')) {
-              const tfhkaData = result.tfhkaData;
-
-              // Auto-populate form fields con datos del SENIAT
-              if (tfhkaData.razonSocial) setValue('razonSocial', tfhkaData.razonSocial);
-              if (tfhkaData.domicilio) setValue('domicilio', tfhkaData.domicilio);
-              if (tfhkaData.telefono) setValue('telefono', tfhkaData.telefono);
-              if (tfhkaData.email) setValue('email', tfhkaData.email);
-
-              toast.success('Datos encontrados en SENIAT', {
-                description: `${tfhkaData.razonSocial} - Información oficial cargada`
-              });
-            }
-
-            setShowTfhkaSync(result.isValid && (rifValue.startsWith('J-') || rifValue.startsWith('G-')));
+            setShowTfhkaSync(false); // Sin TFHKA en modo convencional
           },
           onError: () => {
             setRifValidationResult(null);
@@ -191,11 +175,11 @@ export function CustomersPage() {
 
       return () => clearTimeout(timeoutId);
     } else {
-      // Limpiar resultado si la cédula es muy corta
+      // Limpiar resultado si el RIF es muy corto
       setRifValidationResult(null);
       setShowTfhkaSync(false);
     }
-  }, [rifValue, rifValidationMutation, setValue]);
+  }, [rifValue, rifValidationMutation]);
 
   const filteredCustomers = customers.filter(customer =>
     customer.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
@@ -464,7 +448,7 @@ export function CustomersPage() {
                       {getRifStatusIcon()}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      💡 Solo escribe: V-12345678 (el sistema auto-completa y consulta SENIAT)
+                      Persona natural: V-12345678 | Empresa: J-12345678 (el sistema completa el dígito automáticamente)
                     </p>
                     <div className="flex gap-2">
                       <RifInput
@@ -500,12 +484,6 @@ export function CustomersPage() {
                           {rifValidationResult.details.rifType}
                         </Badge>
                       )}
-                      {rifValidationResult?.tfhkaData && (
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          TFHKA Validado
-                        </Badge>
-                      )}
                     </div>
 
                     {/* RIF Suggestions */}
@@ -523,17 +501,6 @@ export function CustomersPage() {
                       </Alert>
                     )}
 
-                    {/* TFHKA Data Found Alert */}
-                    {rifValidationResult?.tfhkaData && (
-                      <Alert className="bg-blue-50 border-blue-200">
-                        <CheckCircle className="h-4 w-4 text-blue-600" />
-                        <AlertTitle className="text-blue-800">Datos TFHKA encontrados</AlertTitle>
-                        <AlertDescription className="text-blue-700">
-                          Los campos se han completado automáticamente con información oficial del SENIAT.
-                          Puedes modificar cualquier campo si es necesario.
-                        </AlertDescription>
-                      </Alert>
-                    )}
 
                     {errors.rif && (
                       <p className="text-sm text-destructive">{errors.rif.message}</p>

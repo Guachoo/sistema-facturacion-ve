@@ -4,101 +4,15 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { Customer } from '@/types';
 
-// Simulación de consulta TFHKA - En producción se reemplaza con API real
-const simulateTfhkaLookup = async (rif: string): Promise<{
-  realRif?: string;
-  razonSocial?: string;
-  nombre?: string;
-  domicilio?: string;
-  telefono?: string;
-  email?: string;
-}> => {
-  // Simular delay de red
-  await new Promise(resolve => setTimeout(resolve, 1000));
+// Sistema convencional - Sin consultas externas
 
-  // Base de datos simulada de cédulas/RIFs reales venezolanos para pruebas SENIAT
-  const tfhkaDatabase: Record<string, any> = {
-    'V-27853152-6': {
-      realRif: 'V-27853152-6',
-      razonSocial: 'RODRIGUEZ MARIA ELENA',
-      nombre: 'María Elena Rodríguez',
-      domicilio: 'Av. Libertador, Torre Banesco, Caracas 1050',
-      telefono: '+58 212 555-0001',
-      email: 'maria.rodriguez@email.com'
-    },
-    'V-12345678-9': {
-      realRif: 'V-12345678-9',
-      razonSocial: 'GONZALEZ CARLOS ALBERTO',
-      nombre: 'Carlos Alberto González',
-      domicilio: 'Calle Principal, Maracaibo 4001, Zulia',
-      telefono: '+58 261 555-0002'
-    },
-    'V-18765432-1': {
-      realRif: 'V-18765432-1',
-      razonSocial: 'PEREZ JOSE RAMON',
-      nombre: 'José Ramón Pérez',
-      domicilio: 'Urbanización Las Mercedes, Caracas 1060',
-      telefono: '+58 414 555-0003',
-      email: 'jose.perez@gmail.com'
-    },
-    'V-23456789-0': {
-      realRif: 'V-23456789-0',
-      razonSocial: 'MARTINEZ ANA BEATRIZ',
-      nombre: 'Ana Beatriz Martínez',
-      domicilio: 'Centro Comercial Sambil, Valencia 2001',
-      telefono: '+58 412 555-0004'
-    },
-    'V-15678901-2': {
-      realRif: 'V-15678901-2',
-      razonSocial: 'GUTIERREZ LUIS FERNANDO',
-      nombre: 'Luis Fernando Gutiérrez',
-      domicilio: 'Av. Universidad, Barquisimeto 3001',
-      telefono: '+58 416 555-0005',
-      email: 'luis.gutierrez@hotmail.com'
-    },
-    'V-08831044-5': {
-      realRif: 'V-08831044-5',
-      razonSocial: 'MENDEZ PEDRO ANTONIO',
-      nombre: 'Pedro Antonio Méndez',
-      domicilio: 'Av. Francisco de Miranda, Los Palos Grandes, Caracas',
-      telefono: '+58 412 555-8831',
-      email: 'pedro.mendez@outlook.com'
-    },
-    'J-40123456-7': {
-      realRif: 'J-40123456-7',
-      razonSocial: 'CORPORACION DEMO VENEZUELA C.A.',
-      nombre: 'Corporación Demo',
-      domicilio: 'Centro Empresarial, Valencia 2001, Carabobo',
-      telefono: '+58 241 555-0003',
-      email: 'contacto@demo.com.ve'
-    }
-  };
-
-  // Buscar en la base de datos simulada
-  const data = tfhkaDatabase[rif];
-
-  if (!data) {
-    throw new Error('RIF no encontrado en TFHKA');
-  }
-
-  return data;
-};
-
-// Validate customer RIF with enhanced Venezuelan rules and TFHKA lookup
+// Validate customer RIF with Venezuelan rules - Sistema convencional
 export const useValidateCustomerRif = () => {
   return useMutation({
     mutationFn: async (rif: string): Promise<{
       isValid: boolean;
       details: any;
       suggestions?: string[];
-      tfhkaData?: {
-        realRif?: string;
-        razonSocial?: string;
-        nombre?: string;
-        domicilio?: string;
-        telefono?: string;
-        email?: string;
-      };
     }> => {
       const { rifValidation } = await import('@/lib/utils');
       const { logger } = await import('@/lib/logger');
@@ -140,59 +54,15 @@ export const useValidateCustomerRif = () => {
         suggestions.push(`Formato correcto sería: ${formatted}`);
       }
 
-      let tfhkaData = undefined;
+      // Sistema convencional: solo completar dígito verificador si es necesario
+      if (!isValid && isValidFormat) {
+        const { formatRIF } = await import('@/lib/formatters');
+        const autoCompleted = formatRIF(rif);
 
-      // Para cédulas, intentar consulta SENIAT incluso con solo 8 números
-      if ((isValid || (rif.startsWith('V-') && rif.replace(/[^0-9]/g, '').length >= 8)) &&
-          (rif.startsWith('V-') || rif.startsWith('J-') || rif.startsWith('G-'))) {
-        try {
-          // Para cédulas V- con solo 8 dígitos, completar el dígito verificador
-          let rifToLookup = formatted;
-
-          if (rif.startsWith('V-') && !isValid) {
-            const { formatRIF } = await import('@/lib/formatters');
-            rifToLookup = formatRIF(rif); // Esto auto-completa el dígito
-
-            // Si después de formatear seguimos sin un RIF válido, abandonar consulta
-            if (!rifToLookup || rifToLookup.length < 12) {
-              throw new Error('Cédula incompleta');
-            }
-          }
-
-          logger.info('customers', 'seniat_lookup', 'Consulting SENIAT for citizen data', {
-            originalRif: rif,
-            rifToLookup
-          });
-
-          // Simular consulta SENIAT - En producción aquí iría la consulta real
-          tfhkaData = await simulateTfhkaLookup(rifToLookup);
-
-          if (tfhkaData.realRif && tfhkaData.realRif !== rifToLookup) {
-            suggestions.push(`Cédula completa: ${tfhkaData.realRif}`);
-          }
-
-          if (tfhkaData.razonSocial) {
-            suggestions.push(`📋 SENIAT: ${tfhkaData.razonSocial}`);
-
-            // Marcar como válido si encontramos datos SENIAT
-            if (rif.startsWith('V-') && !isValid) {
-              isValid = true;
-              formatted = rifToLookup;
-            }
-          }
-
-          if (rif.startsWith('J-') || rif.startsWith('G-')) {
-            suggestions.push('Cliente empresarial: sincronizado con TFHKA');
-          }
-
-        } catch (error) {
-          logger.warn('customers', 'seniat_lookup', 'SENIAT lookup failed', { error });
-          if (rif.startsWith('J-') || rif.startsWith('G-')) {
-            suggestions.push('Cliente empresarial: será sincronizado con TFHKA automáticamente');
-          }
-          if (rif.startsWith('V-') && rif.replace(/[^0-9]/g, '').length >= 8) {
-            suggestions.push('💡 Cédula no encontrada en SENIAT - Verifica los números');
-          }
+        if (autoCompleted && autoCompleted !== rif) {
+          suggestions.push(`Dígito verificador: ${autoCompleted}`);
+          formatted = autoCompleted;
+          isValid = true;
         }
       }
 
@@ -201,8 +71,7 @@ export const useValidateCustomerRif = () => {
       return {
         isValid,
         details,
-        suggestions: suggestions.length > 0 ? suggestions : undefined,
-        tfhkaData
+        suggestions: suggestions.length > 0 ? suggestions : undefined
       };
     }
   });
