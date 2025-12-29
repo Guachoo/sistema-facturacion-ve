@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Reset Completo - Sistema Facturación</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 { color: #dc3545; text-align: center; }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #fd7e14; }
+        .btn:hover { opacity: 0.8; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .progress {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            background: #28a745;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Reset Completo - Sistema Facturación</h1>
+
+        <div class="warning">
+            <strong>⚠️ ADVERTENCIA CRÍTICA:</strong><br>
+            Este proceso eliminará <strong>TODOS</strong> los datos operacionales del sistema:<br>
+            • Facturas, cotizaciones, clientes, productos<br>
+            • Movimientos de inventario, auditoría fiscal<br>
+            • Documentos y respaldos fiscales<br><br>
+            <strong>Solo usar en ambiente de PRUEBAS</strong>
+        </div>
+
+        <div class="stats" id="stats">
+            <!-- Se llenarán con JavaScript -->
+        </div>
+
+        <div style="text-align: center;">
+            <button class="btn" onclick="verificarEstado()">📊 Verificar Estado Actual</button>
+            <button class="btn btn-warning" onclick="dryRun()">🔍 Simular Reset (Dry Run)</button>
+            <button class="btn btn-danger" onclick="resetCompleto()" id="btnReset">🔥 EJECUTAR RESET REAL</button>
+        </div>
+
+        <div class="progress" style="display: none;" id="progress">
+            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://supfddcbyfuzvxsrzwio.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGZkZGNieWZ1enZ4c3J6d2lvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MzI1NTgsImV4cCI6MjA3NDMwODU1OH0.ahAMsD3GIqJA87fK_Vk_n3BhzF7sxWQ2GJCtvrPvaUk';
+
+        const headers = {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+        };
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('log');
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            logElement.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateProgress(current, total) {
+            const progress = document.getElementById('progress');
+            const progressBar = document.getElementById('progressBar');
+
+            if (total > 0) {
+                progress.style.display = 'block';
+                const percentage = (current / total) * 100;
+                progressBar.style.width = `${percentage}%`;
+            } else {
+                progress.style.display = 'none';
+            }
+        }
+
+        async function supabaseRequest(table, method = 'GET', filter = '', body = null) {
+            const url = `${SUPABASE_URL}/rest/v1/${table}${filter}`;
+
+            const options = {
+                method,
+                headers,
+            };
+
+            if (body && method !== 'GET') {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${JSON.stringify(data)}`);
+                }
+
+                const count = response.headers.get('content-range')
+                    ? parseInt(response.headers.get('content-range').split('/')[1])
+                    : (Array.isArray(data) ? data.length : 1);
+
+                return { success: true, data, count };
+            } catch (error) {
+                return { success: false, error: error.message, data: [], count: 0 };
+            }
+        }
+
+        async function countRecords(table) {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=id`, {
+                    method: 'HEAD',
+                    headers
+                });
+
+                const contentRange = response.headers.get('content-range');
+                if (contentRange) {
+                    const total = contentRange.split('/')[1];
+                    return total === '*' ? '∞' : parseInt(total);
+                }
+                return 0;
+            } catch (error) {
+                return 0;
+            }
+        }
+
+        async function verificarEstado() {
+            log('📊 Verificando estado actual del sistema...');
+
+            const tablas = [
+                { name: 'invoices', label: 'Facturas' },
+                { name: 'quotations', label: 'Cotizaciones' },
+                { name: 'customers', label: 'Clientes' },
+                { name: 'items', label: 'Productos/Servicios' },
+                { name: 'quotation_items', label: 'Items Cotización' },
+                { name: 'inventory_movements', label: 'Mov. Inventario' },
+                { name: 'fiscal_documents', label: 'Doc. Fiscales' },
+                { name: 'users', label: 'Usuarios' },
+            ];
+
+            const stats = document.getElementById('stats');
+            stats.innerHTML = '';
+
+            let totalOperational = 0;
+            let totalConfig = 0;
+
+            for (const tabla of tablas) {
+                const count = await countRecords(tabla.name);
+
+                const isConfig = ['users', 'user_permissions', 'permission_audit'].includes(tabla.name);
+                if (isConfig) {
+                    totalConfig += typeof count === 'number' ? count : 0;
+                } else {
+                    totalOperational += typeof count === 'number' ? count : 0;
+                }
+
+                const statCard = document.createElement('div');
+                statCard.className = 'stat-card';
+                statCard.innerHTML = `
+                    <div class="stat-number" style="color: ${isConfig ? '#28a745' : '#dc3545'}">${count}</div>
+                    <div>${tabla.label}</div>
+                `;
+                stats.appendChild(statCard);
+
+                log(`${tabla.label}: ${count} registros`);
+            }
+
+            log(`📈 Total datos operacionales: ${totalOperational}`, totalOperational > 0 ? 'warning' : 'success');
+            log(`📈 Total configuración: ${totalConfig}`, 'info');
+        }
+
+        async function dryRun() {
+            log('🔍 Iniciando simulación de reset (DRY RUN)...');
+            log('⚠️ Esto SOLO muestra qué se haría, sin ejecutar nada', 'warning');
+
+            const tablasAEliminar = [
+                'fiscal_audit_log',
+                'fiscal_traceability',
+                'fiscal_backups',
+                'fiscal_documents',
+                'quotation_items',
+                'inventory_movements',
+                'invoices',
+                'quotations',
+                'items',
+                'customers'
+            ];
+
+            for (let i = 0; i < tablasAEliminar.length; i++) {
+                const tabla = tablasAEliminar[i];
+                updateProgress(i, tablasAEliminar.length);
+
+                const count = await countRecords(tabla);
+                log(`[DRY RUN] Se eliminarían ${count} registros de ${tabla}`);
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            updateProgress(tablasAEliminar.length, tablasAEliminar.length);
+            log('✅ Simulación completada', 'success');
+        }
+
+        async function resetCompleto() {
+            if (!confirm('⚠️ ¿Está COMPLETAMENTE SEGURO de eliminar TODOS los datos?\n\nEsta acción NO se puede deshacer.')) {
+                return;
+            }
+
+            if (!confirm('🚨 ÚLTIMA CONFIRMACIÓN:\n\n¿Confirma que es un ambiente de PRUEBAS y NO producción?')) {
+                return;
+            }
+
+            const confirmText = prompt('Para continuar, escriba exactamente: ELIMINAR TODO');
+            if (confirmText !== 'ELIMINAR TODO') {
+                log('❌ Reset cancelado - confirmación incorrecta', 'error');
+                return;
+            }
+
+            log('🚀 Iniciando reset completo...', 'warning');
+
+            const tablasAEliminar = [
+                'fiscal_audit_log',
+                'fiscal_traceability',
+                'fiscal_backups',
+                'fiscal_documents',
+                'quotation_items',
+                'inventory_movements',
+                'invoices',
+                'quotations',
+                'items',
+                'customers'
+            ];
+
+            const btnReset = document.getElementById('btnReset');
+            btnReset.disabled = true;
+            btnReset.textContent = 'Ejecutando...';
+
+            let totalEliminados = 0;
+            let errores = 0;
+
+            for (let i = 0; i < tablasAEliminar.length; i++) {
+                const tabla = tablasAEliminar[i];
+                updateProgress(i, tablasAEliminar.length);
+
+                log(`🗑️ Eliminando ${tabla}...`);
+
+                try {
+                    const result = await supabaseRequest(tabla, 'DELETE', '?id=gte.0');
+
+                    if (result.success) {
+                        const eliminados = result.count || 0;
+                        totalEliminados += eliminados;
+                        log(`   ✅ Eliminados ${eliminados} registros de ${tabla}`, 'success');
+                    } else {
+                        errores++;
+                        log(`   ❌ Error eliminando ${tabla}: ${result.error}`, 'error');
+                    }
+                } catch (error) {
+                    errores++;
+                    log(`   ❌ Error: ${error.message}`, 'error');
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            updateProgress(tablasAEliminar.length, tablasAEliminar.length);
+
+            log('', 'info');
+            log('📊 RESUMEN DEL RESET:', 'info');
+            log(`✅ Total eliminado: ${totalEliminados} registros`, 'success');
+            log(`❌ Errores: ${errores}`, errores > 0 ? 'error' : 'success');
+            log('', 'info');
+
+            if (errores === 0) {
+                log('🎉 ¡Reset completado exitosamente!', 'success');
+                log('💡 El sistema está limpio y listo para nuevas pruebas', 'info');
+            } else {
+                log('⚠️ Reset completado con algunos errores', 'warning');
+            }
+
+            btnReset.disabled = false;
+            btnReset.textContent = '🔥 EJECUTAR RESET REAL';
+
+            // Verificar estado final
+            setTimeout(() => {
+                log('🔍 Verificando estado final...', 'info');
+                verificarEstado();
+            }, 2000);
+        }
+
+        // Verificar estado inicial al cargar
+        window.onload = function() {
+            log('🌐 Sistema de reset cargado', 'success');
+            log('💡 Comience verificando el estado actual', 'info');
+        };
+    </script>
+</body>
+</html>
