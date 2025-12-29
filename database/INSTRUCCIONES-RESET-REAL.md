@@ -13,19 +13,34 @@ Los scripts SQL anteriores están diseñados para PostgreSQL local, pero **el si
 
 ## 🛠️ **SOLUCIONES IMPLEMENTADAS**
 
-### 1️⃣ **Script Node.js (Recomendado)**
+### ⚠️ **PROBLEMA DETECTADO - RLS POLICIES**
+
+Los scripts encuentran datos pero no pueden eliminarlos debido a:
+- **Row Level Security (RLS)** activado en Supabase
+- Tablas requieren campo `created_by` para eliminaciones
+- La API key `anon` no tiene permisos completos de eliminación
+
+### 1️⃣ **Script Node.js (Limitado por RLS)**
 ```bash
 # Ver qué se haría (seguro):
 node reset-supabase-completo.js --dry-run
 
-# Ejecutar reset real (CUIDADO):
+# Ejecutar reset real (LIMITADO):
 node reset-supabase-completo.js --force
 ```
 
-### 2️⃣ **Interfaz Web (Más fácil)**
+### 2️⃣ **Interfaz Web (También limitada)**
 ```bash
 # Abrir en navegador:
 reset-browser.html
+```
+
+### 3️⃣ **SOLUCIÓN RECOMENDADA - Dashboard Supabase**
+```
+1. Ir a: https://app.supabase.com/project/supfddcbyfuzvxsrzwio
+2. Authentication > Users > Eliminar usuarios de prueba
+3. Table Editor > Seleccionar tabla > Delete all rows
+4. Repetir para: invoices, customers, items, quotations
 ```
 
 ---
@@ -158,30 +173,66 @@ console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
 
 ---
 
-## 🆘 **SI ALGO SALE MAL**
+## ✅ **ANÁLISIS FINAL COMPLETADO**
+
+### 📊 **DATOS ENCONTRADOS (Dic 28, 2025):**
+- **🔴 27 Facturas** (FAC-000001 a FAC-000027)
+- **🔴 7 Clientes** (V-12345678-9, V-07519575-0, etc.)
+- **⚪ 0 Productos/Items** (tabla vacía)
+- **⚪ 0 Cotizaciones** (tabla vacía)
+- **🟢 5 Usuarios + 6 Permisos** (se mantienen)
+
+### 🎯 **SOLUCIÓN DEFINITIVA:**
+
+**OPCIÓN 1 - Dashboard Supabase (GARANTIZADA):**
+```
+1. Ir a: https://app.supabase.com/project/supfddcbyfuzvxsrzwio
+2. Table Editor > invoices > Seleccionar todo > Delete (27 registros)
+3. Table Editor > customers > Seleccionar todo > Delete (7 registros)
+```
+
+**OPCIÓN 2 - SQL Editor en Supabase:**
+```sql
+DELETE FROM invoices;   -- 27 registros
+DELETE FROM customers;  -- 7 registros
+```
+
+### 🔍 **VERIFICACIÓN POST-LIMPIEZA:**
+```bash
+# Correr este script para verificar:
+node database/verificar-datos.js
+```
+
+**Resultado esperado:**
+```
+🎉 ¡SISTEMA LIMPIO!
+✅ No hay datos operacionales que eliminar
+🔴 Datos operacionales: 0 registros
+```
+
+---
+
+## 🆘 **POR QUÉ NO FUNCIONAN LOS SCRIPTS AUTOMÁTICOS**
+
+### **Causa identificada:**
+- **Row Level Security (RLS)** activado en Supabase
+- Tablas requieren `created_by` para eliminaciones
+- API key `anon` no tiene permisos de eliminación masiva
 
 ### **Los datos "aparecen" de nuevo:**
-- Son datos mock/fallback del código
-- El reset SÍ funcionó en Supabase
-- El frontend muestra datos falsos cuando no encuentra datos reales
-
-### **Error de conexión:**
-- Verificar API key de Supabase
-- Verificar URL de Supabase
-- Verificar permisos de la API key
-
-### **Reset parcial:**
-- Algunas tablas pueden tener políticas RLS
-- Ejecutar el reset varias veces puede resolver dependencias
+- Cache del navegador (Ctrl + F5)
+- React Query cache (`localStorage.clear()`)
+- Datos mock/fallback del frontend
 
 ---
 
 ## ✅ **CONFIRMACIÓN FINAL**
 
-Después del reset exitoso deberías tener:
+El sistema tiene **exactamente 34 registros operacionales** que eliminar.
+Después del reset manual exitoso tendrás:
 
-- **✅ Supabase limpio** (verificar con API directa)
-- **✅ Aplicación sin datos** (después de limpiar cache)
-- **✅ Sistema listo** para nuevas pruebas
+- **✅ Supabase limpio** (0 facturas, 0 clientes)
+- **✅ Aplicación vacía** (después de limpiar cache)
+- **✅ Sistema listo** para pruebas reales
 
-**¡Sistema completamente limpio y listo para pruebas!** 🎉
+**¡Análisis completo realizado!** 🎉

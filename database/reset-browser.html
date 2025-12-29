@@ -313,7 +313,7 @@
                 log(`🗑️ Eliminando ${tabla}...`);
 
                 try {
-                    const result = await supabaseRequest(tabla, 'DELETE', '?id=gte.0');
+                    const result = await supabaseRequest(tabla, 'DELETE', '?id=neq.00000000-0000-0000-0000-000000000000');
 
                     if (result.success) {
                         const eliminados = result.count || 0;

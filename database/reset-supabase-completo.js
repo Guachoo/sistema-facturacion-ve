@@ -110,13 +110,49 @@ async function deleteAllFromTable(table) {
     return { success: true, count };
   }
 
-  // Para Supabase, usamos rango para eliminar todos
-  const result = await supabaseRequest(table, 'DELETE', '?id=gte.0');
+  // Método 1: Usar una condición que siempre sea verdadera (created_at existe en casi todas las tablas)
+  let result = await supabaseRequest(table, 'DELETE', '?created_at=gte.1900-01-01');
+
+  if (!result.success && result.error.includes('42703')) {
+    // Método 2: Si created_at no existe, intentar con id
+    console.log(`   ⚠️  Método created_at falló, intentando con id...`);
+    result = await supabaseRequest(table, 'DELETE', '?id=gte.00000000-0000-0000-0000-000000000000');
+  }
+
+  if (!result.success && result.error.includes('22P02')) {
+    // Método 3: Si id no es UUID, intentar con rango numérico
+    console.log(`   ⚠️  Método UUID falló, intentando con enteros...`);
+    result = await supabaseRequest(table, 'DELETE', '?id=gte.0');
+  }
+
+  if (!result.success && (result.error.includes('Unexpected end of JSON input') || result.error.includes('42P01'))) {
+    // Método 4: La tabla puede estar vacía o no existir
+    console.log(`   ℹ️  Tabla ${table} parece estar vacía o no existir`);
+    return { success: true, count: 0 };
+  }
 
   if (result.success) {
     console.log(`   ✅ Eliminados ${result.count || 'todos los'} registros de ${table}`);
   } else {
     console.log(`   ❌ Error eliminando ${table}: ${result.error}`);
+    console.log(`   💡 Intentando enfoque alternativo para ${table}...`);
+
+    // Último recurso: obtener algunos registros y eliminarlos individualmente
+    const getResult = await supabaseRequest(table, 'GET', '?limit=1000');
+    if (getResult.success && getResult.data && getResult.data.length > 0) {
+      console.log(`   🔄 Eliminando ${getResult.data.length} registros uno por uno...`);
+      let deleteCount = 0;
+
+      for (const record of getResult.data) {
+        if (record.id) {
+          const delResult = await supabaseRequest(table, 'DELETE', `?id=eq.${record.id}`);
+          if (delResult.success) deleteCount++;
+        }
+      }
+
+      console.log(`   ✅ Eliminados ${deleteCount} registros de ${table} individualmente`);
+      return { success: true, count: deleteCount };
+    }
   }
 
   return result;
