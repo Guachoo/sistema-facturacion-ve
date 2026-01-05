@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,10 +26,11 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building, Upload, Plus, Edit, Trash2, FileText } from 'lucide-react';
+import { Building, Upload, Plus, Edit, Trash2, FileText, Loader2 } from 'lucide-react';
 import { RifInput } from '@/components/ui/rif-input';
 import { validateRIF } from '@/lib/formatters';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 import type { CompanySettings, ControlNumberBatch } from '@/types';
 
 const companySchema = z.object({
@@ -83,12 +84,15 @@ export function CompanySettingsPage() {
   const [controlBatches, setControlBatches] = useState<ControlNumberBatch[]>(mockControlBatches);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<ControlNumberBatch | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<CompanyForm>({
     resolver: zodResolver(companySchema),
@@ -104,9 +108,83 @@ export function CompanySettingsPage() {
     resolver: zodResolver(batchSchema),
   });
 
-  const onSubmitCompany = (data: CompanyForm) => {
-    setCompanySettings(data);
-    toast.success('Configuración de empresa actualizada correctamente');
+  // Cargar configuración al montar el componente
+  useEffect(() => {
+    loadCompanySettings();
+  }, []);
+
+  const loadCompanySettings = async () => {
+    try {
+      setIsLoading(true);
+      console.log('📊 Cargando configuración de empresa desde Supabase...');
+
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('❌ Error al cargar configuración:', error);
+        toast.error('Error al cargar la configuración de empresa');
+        return;
+      }
+
+      if (data) {
+        console.log('✅ Configuración cargada:', data);
+
+        const settings: CompanySettings = {
+          razonSocial: data.razon_social,
+          rif: data.rif,
+          domicilioFiscal: data.domicilio_fiscal,
+          telefonos: data.telefonos,
+          email: data.email,
+          condicionesVenta: data.condiciones_venta,
+        };
+
+        setCompanySettings(settings);
+        reset(settings); // Actualizar valores del formulario
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar configuración:', error);
+      toast.error('Error al cargar la configuración de empresa');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onSubmitCompany = async (data: CompanyForm) => {
+    try {
+      setIsSaving(true);
+      console.log('💾 Guardando configuración de empresa en Supabase...', data);
+
+      const { error } = await supabase
+        .from('company_settings')
+        .update({
+          razon_social: data.razonSocial,
+          rif: data.rif,
+          domicilio_fiscal: data.domicilioFiscal,
+          telefonos: data.telefonos,
+          email: data.email,
+          condiciones_venta: data.condicionesVenta,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', 1); // Asumiendo que solo hay una fila de configuración
+
+      if (error) {
+        console.error('❌ Error al guardar configuración:', error);
+        toast.error('Error al guardar la configuración de empresa');
+        return;
+      }
+
+      console.log('✅ Configuración guardada exitosamente');
+      setCompanySettings(data);
+      toast.success('Configuración de empresa actualizada correctamente');
+    } catch (error) {
+      console.error('❌ Error al guardar configuración:', error);
+      toast.error('Error al guardar la configuración de empresa');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const onSubmitBatch = (data: BatchForm) => {
@@ -154,6 +232,18 @@ export function CompanySettingsPage() {
       toast.success('Logo subido correctamente');
     }
   };
+
+  // Mostrar loader mientras carga
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[600px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Cargando configuración de empresa...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -282,8 +372,15 @@ export function CompanySettingsPage() {
                   )}
                 </div>
 
-                <Button type="submit" className="w-full md:w-auto">
-                  Guardar Configuración
+                <Button type="submit" className="w-full md:w-auto" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Guardar Configuración'
+                  )}
                 </Button>
               </form>
             </CardContent>

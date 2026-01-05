@@ -8,6 +8,31 @@ DROP TABLE IF EXISTS items CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
 DROP TABLE IF EXISTS company_settings CASCADE;
 DROP TABLE IF EXISTS control_number_batches CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- =====================================================
+-- TABLA: USERS (USUARIOS DEL SISTEMA)
+-- =====================================================
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  rol VARCHAR(20) NOT NULL CHECK (rol IN ('administrador', 'vendedor', 'promotor', 'contador')),
+  activo BOOLEAN DEFAULT true,
+  ultimo_acceso TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crear índice para búsqueda rápida por email
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_rol ON users(rol);
+CREATE INDEX idx_users_activo ON users(activo);
+
+-- Insertar usuario administrador por defecto
+INSERT INTO users (nombre, email, password_hash, rol) VALUES
+('Administrador', 'admin@axiona.com', '$2a$10$dummyhash', 'administrador');
 
 -- =====================================================
 -- TABLA: CUSTOMERS (CLIENTES)
@@ -33,6 +58,8 @@ CREATE TABLE items (
   codigo VARCHAR(50) NOT NULL UNIQUE,
   descripcion TEXT NOT NULL,
   tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('producto', 'servicio')),
+  moneda VARCHAR(3) NOT NULL DEFAULT 'VES' CHECK (moneda IN ('VES', 'USD')),
+  precio_usd DECIMAL(15,2),
   precio_base DECIMAL(15,2) NOT NULL,
   iva_aplica BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

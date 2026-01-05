@@ -49,7 +49,7 @@ export function BcvRateBadge({ date }: BcvRateBadgeProps) {
       <PopoverTrigger asChild>
         <Badge variant="secondary" className="gap-2 cursor-pointer hover:bg-secondary/80">
           <DollarSign className="h-3 w-3" />
-          <span className="font-mono">{formatNumber(rate.rate)} VES</span>
+          <span className="font-mono">{formatNumber(rate.rate)} Bs</span>
         </Badge>
       </PopoverTrigger>
       <PopoverContent className="w-80">
@@ -70,7 +70,7 @@ export function BcvRateBadge({ date }: BcvRateBadgeProps) {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Tasa:</span>
-              <span className="font-mono font-bold">{formatNumber(rate.rate)} VES/USD</span>
+              <span className="font-mono font-bold">{formatNumber(rate.rate)} Bs/USD</span>
             </div>
 
             <div className="flex justify-between items-center">
@@ -90,7 +90,7 @@ export function BcvRateBadge({ date }: BcvRateBadgeProps) {
           </div>
 
           <div className="text-xs text-muted-foreground border-t pt-2">
-            Tasa oficial del Banco Central de Venezuela actualizada automáticamente cada hora.
+            Tasa oficial del BCV. Se actualiza automáticamente cada 2 minutos. Haz clic en el botón de actualizar para obtener la tasa más reciente.
           </div>
         </div>
       </PopoverContent>

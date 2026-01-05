@@ -128,8 +128,9 @@ export function InvoiceWizardPage() {
       updateInvoiceLine(existingLine.itemId, { cantidad: existingLine.cantidad + 1 });
     } else {
       const baseImponible = item.precioBase;
-      const montoIva = item.ivaAplica ? calculateIVA(baseImponible) : 0;
-      
+      const porcentajeIva = item.ivaAplica ? 16 : 0;
+      const montoIva = calculateIVA(baseImponible, porcentajeIva);
+
       const newLine: InvoiceLine = {
         itemId: item.id!,
         codigo: item.codigo,
@@ -138,9 +139,10 @@ export function InvoiceWizardPage() {
         precioUnitario: item.precioBase,
         descuento: 0,
         baseImponible,
+        porcentajeIva,
         montoIva,
       };
-      
+
       setInvoiceLines([...invoiceLines, newLine]);
     }
   };
@@ -151,9 +153,9 @@ export function InvoiceWizardPage() {
         if (line.itemId === itemId) {
           const updatedLine = { ...line, ...updates };
           const baseImponible = updatedLine.cantidad * updatedLine.precioUnitario * (1 - updatedLine.descuento / 100);
-          const item = items.find(i => i.id === itemId);
-          const montoIva = item?.ivaAplica ? calculateIVA(baseImponible) : 0;
-          
+          const porcentajeIva = updatedLine.porcentajeIva ?? 0;
+          const montoIva = calculateIVA(baseImponible, porcentajeIva);
+
           return {
             ...updatedLine,
             baseImponible,
@@ -236,6 +238,14 @@ export function InvoiceWizardPage() {
 
   const handleSubmitInvoice = () => {
     if (!selectedCustomer || !bcvRate) return;
+
+    // LOG CRÍTICO: Verificar tasa BCV antes de crear factura
+    console.log('🔴 CREANDO FACTURA CON TASA BCV:', {
+      rate: bcvRate.rate,
+      date: bcvRate.date,
+      source: bcvRate.source,
+      lastUpdate: bcvRate.lastUpdate
+    });
 
     const invoiceData: Omit<Invoice, 'id' | 'numero' | 'numeroControl'> = {
       fecha: new Date().toISOString(),
@@ -346,7 +356,7 @@ export function InvoiceWizardPage() {
                   <span className="font-mono">{formatVES(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>IVA (16%):</span>
+                  <span>IVA:</span>
                   <span className="font-mono">{formatVES(totalIva)}</span>
                 </div>
                 {totalIgtf > 0 && (
@@ -518,6 +528,7 @@ export function InvoiceWizardPage() {
                             <TableHead>Precio Unit.</TableHead>
                             <TableHead>Desc. %</TableHead>
                             <TableHead>Base Imp.</TableHead>
+                            <TableHead>IVA %</TableHead>
                             <TableHead>IVA</TableHead>
                             <TableHead>Acciones</TableHead>
                           </TableRow>
@@ -554,6 +565,17 @@ export function InvoiceWizardPage() {
                                 />
                               </TableCell>
                               <TableCell className="font-mono">{formatVES(line.baseImponible)}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  value={line.porcentajeIva}
+                                  onChange={(e) => updateInvoiceLine(line.itemId, { porcentajeIva: parseFloat(e.target.value) || 0 })}
+                                  className="w-20"
+                                />
+                              </TableCell>
                               <TableCell className="font-mono">{formatVES(line.montoIva)}</TableCell>
                               <TableCell>
                                 <Button
@@ -592,13 +614,23 @@ export function InvoiceWizardPage() {
                                 <p className="text-sm text-muted-foreground font-mono">{item.codigo}</p>
                               </div>
                               <div className="text-right">
-                                <p className="font-mono">{formatVES(item.precioBase)}</p>
-                                <div className="flex gap-1">
+                                {item.moneda === 'USD' && item.precioUsd ? (
+                                  <div>
+                                    <p className="font-mono font-semibold text-blue-600">{formatUSD(item.precioUsd)}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">{formatVES(item.precioBase)}</p>
+                                  </div>
+                                ) : (
+                                  <p className="font-mono">{formatVES(item.precioBase)}</p>
+                                )}
+                                <div className="flex gap-1 mt-1">
                                   <Badge variant={item.tipo === 'producto' ? 'default' : 'secondary'}>
                                     {item.tipo}
                                   </Badge>
                                   {item.ivaAplica && (
                                     <Badge variant="outline">IVA</Badge>
+                                  )}
+                                  {item.moneda === 'USD' && (
+                                    <Badge variant="outline" className="text-blue-600">USD</Badge>
                                   )}
                                 </div>
                               </div>
@@ -759,6 +791,7 @@ export function InvoiceWizardPage() {
                             <TableHead>Cant.</TableHead>
                             <TableHead>Precio Unit.</TableHead>
                             <TableHead>Base Imp.</TableHead>
+                            <TableHead>IVA %</TableHead>
                             <TableHead>IVA</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -769,6 +802,7 @@ export function InvoiceWizardPage() {
                               <TableCell>{line.cantidad}</TableCell>
                               <TableCell className="font-mono">{formatVES(line.precioUnitario)}</TableCell>
                               <TableCell className="font-mono">{formatVES(line.baseImponible)}</TableCell>
+                              <TableCell>{line.porcentajeIva}%</TableCell>
                               <TableCell className="font-mono">{formatVES(line.montoIva)}</TableCell>
                             </TableRow>
                           ))}
@@ -789,7 +823,7 @@ export function InvoiceWizardPage() {
                           <span className="font-mono">{formatVES(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>IVA (16%):</span>
+                          <span>IVA:</span>
                           <span className="font-mono">{formatVES(totalIva)}</span>
                         </div>
                         {totalIgtf > 0 && (

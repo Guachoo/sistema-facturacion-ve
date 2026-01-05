@@ -1,7 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { Layout } from '@/components/layout/layout';
@@ -15,8 +14,10 @@ import { ReportsPage } from '@/pages/reports';
 import { SalesBookPage } from '@/pages/reports/sales-book';
 import { IgtfReportPage } from '@/pages/reports/igtf-report';
 import { CompanySettingsPage } from '@/pages/company-settings';
+import { ConfiguracionPage } from '@/pages/configuracion';
+import { UsuariosPage } from '@/pages/usuarios';
+import { TramitesPage } from '@/pages/tramites';
 
-// Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -26,36 +27,24 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
-function AppRoutes() {
+function AppContent() {
   const { isAuthenticated } = useAuth();
-  useKeyboardShortcuts();
 
   return (
     <Routes>
-      <Route 
-        path="/login" 
-        element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
-        } 
-      />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+
+      <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="clientes" element={<CustomersPage />} />
@@ -65,9 +54,12 @@ function AppRoutes() {
         <Route path="reportes" element={<ReportsPage />} />
         <Route path="reportes/libro-ventas" element={<SalesBookPage />} />
         <Route path="reportes/igtf" element={<IgtfReportPage />} />
+        <Route path="tramites" element={<TramitesPage />} />
+        <Route path="configuracion" element={<ConfiguracionPage />} />
         <Route path="configuracion/empresa" element={<CompanySettingsPage />} />
+        <Route path="usuarios" element={<UsuariosPage />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
@@ -76,15 +68,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-          <Toaster 
-            position="top-right" 
-            richColors 
+        <BrowserRouter>
+          <AppContent />
+          <Toaster
+            position="top-right"
+            richColors
             expand={false}
             duration={4000}
           />
-        </Router>
+        </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
   );

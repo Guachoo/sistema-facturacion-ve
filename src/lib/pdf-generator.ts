@@ -117,7 +117,7 @@ export const generateInvoicePDF = (invoice: Invoice): void => {
   addText(formatVES(invoice.subtotal), pageWidth - margin, yPosition, { align: 'right' });
   yPosition += 8;
 
-  addText('IVA (16%):', totalsX, yPosition);
+  addText('IVA:', totalsX, yPosition);
   addText(formatVES(invoice.montoIva), pageWidth - margin, yPosition, { align: 'right' });
   yPosition += 8;
 

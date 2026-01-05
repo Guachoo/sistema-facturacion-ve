@@ -1,9 +1,11 @@
 // Core types for the Venezuelan invoice system
+export type UserRole = 'administrador' | 'vendedor' | 'promotor' | 'contador';
+
 export interface User {
   id: string;
   nombre: string;
   email: string;
-  rol: 'vendedor' | 'admin' | 'auditor';
+  rol: UserRole;
 }
 
 export interface AuthResponse {
@@ -29,7 +31,10 @@ export interface Item {
   codigo: string;
   descripcion: string;
   tipo: 'producto' | 'servicio';
-  precioBase: number; // Always in VES
+  moneda: 'VES' | 'USD' | 'EUR'; // Currency type
+  precioUsd?: number; // Price in USD (if moneda is USD)
+  precioEur?: number; // Price in EUR (if moneda is EUR)
+  precioBase: number; // Price in VES (calculated from USD/EUR if foreign currency, or direct if VES)
   ivaAplica: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -43,6 +48,7 @@ export interface InvoiceLine {
   precioUnitario: number; // VES
   descuento: number; // percentage 0-100
   baseImponible: number; // calculated
+  porcentajeIva: number; // percentage 0-100 (editable, default 16)
   montoIva: number; // calculated
 }
 
@@ -89,6 +95,13 @@ export interface BcvRate {
   rate: number;
   source: string;
   lastUpdate?: string;
+}
+
+export interface ExchangeRates {
+  usd: number;
+  eur: number;
+  date: string;
+  lastUpdate: string;
 }
 
 export interface SalesBookEntry {

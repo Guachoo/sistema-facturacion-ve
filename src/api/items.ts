@@ -9,7 +9,9 @@ const mockItems: Item[] = [
     codigo: 'SERV-001',
     descripcion: 'Consultoría en Sistemas',
     tipo: 'servicio',
-    precioBase: 50000, // VES
+    moneda: 'USD',
+    precioUsd: 10,
+    precioBase: 500, // Will be calculated from USD
     ivaAplica: true,
   },
   {
@@ -17,6 +19,7 @@ const mockItems: Item[] = [
     codigo: 'PROD-001',
     descripcion: 'Software de Gestión',
     tipo: 'producto',
+    moneda: 'VES',
     precioBase: 150000, // VES
     ivaAplica: true,
   },
@@ -62,6 +65,8 @@ export const useItems = () => {
         codigo: row.codigo,
         descripcion: row.descripcion,
         tipo: row.tipo,
+        moneda: row.moneda || 'VES',
+        precioUsd: row.precio_usd ? parseFloat(row.precio_usd) : undefined,
         precioBase: parseFloat(row.precio_base),
         ivaAplica: row.iva_aplica,
         createdAt: row.created_at,
@@ -86,6 +91,8 @@ export const useCreateItem = () => {
         codigo: String(item.codigo || '').trim().toUpperCase(),
         descripcion: String(item.descripcion || '').trim(),
         tipo: item.tipo || 'producto',
+        moneda: item.moneda || 'VES',
+        precio_usd: item.precioUsd ? Number(item.precioUsd) : null,
         precio_base: Number(item.precioBase) || 0,
         iva_aplica: Boolean(item.ivaAplica),
       };
@@ -128,6 +135,8 @@ export const useCreateItem = () => {
         codigo: createdItem.codigo,
         descripcion: createdItem.descripcion,
         tipo: createdItem.tipo,
+        moneda: createdItem.moneda || 'VES',
+        precioUsd: createdItem.precio_usd ? parseFloat(createdItem.precio_usd) : undefined,
         precioBase: parseFloat(createdItem.precio_base),
         ivaAplica: createdItem.iva_aplica,
         createdAt: createdItem.created_at,
@@ -155,6 +164,8 @@ export const useUpdateItem = () => {
         codigo: String(item.codigo || '').trim().toUpperCase(),
         descripcion: String(item.descripcion || '').trim(),
         tipo: item.tipo || 'producto',
+        moneda: item.moneda || 'VES',
+        precio_usd: item.precioUsd ? Number(item.precioUsd) : null,
         precio_base: Number(item.precioBase) || 0,
         iva_aplica: Boolean(item.ivaAplica),
       };
@@ -194,6 +205,8 @@ export const useUpdateItem = () => {
         codigo: updatedItem.codigo,
         descripcion: updatedItem.descripcion,
         tipo: updatedItem.tipo,
+        moneda: updatedItem.moneda || 'VES',
+        precioUsd: updatedItem.precio_usd ? parseFloat(updatedItem.precio_usd) : undefined,
         precioBase: parseFloat(updatedItem.precio_base),
         ivaAplica: updatedItem.iva_aplica,
         createdAt: updatedItem.created_at,

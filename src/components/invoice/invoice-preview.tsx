@@ -142,7 +142,7 @@ export function InvoicePreview({
                   <span className="font-mono">{formatVES(invoice.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>IVA (16%):</span>
+                  <span>IVA:</span>
                   <span className="font-mono">{formatVES(invoice.montoIva)}</span>
                 </div>
                 {invoice.montoIgtf > 0 && (

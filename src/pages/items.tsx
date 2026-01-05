@@ -34,9 +34,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Search, Edit, Trash2, Package, Download, Upload } from 'lucide-react';
 import { useItems, useCreateItem, useUpdateItem, useDeleteItem } from '@/api/items';
+import { useBcvRate, useExchangeRates } from '@/api/rates';
 import { MoneyInput } from '@/components/ui/money-input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { formatVES } from '@/lib/formatters';
+import { BcvRateBadge } from '@/components/ui/bcv-rate-badge';
+import { EurRateBadge } from '@/components/ui/eur-rate-badge';
+import { formatVES, formatUSD, formatEUR } from '@/lib/formatters';
 import { toast } from 'sonner';
 import type { Item } from '@/types';
 
@@ -44,6 +47,9 @@ const itemSchema = z.object({
   codigo: z.string().min(1, 'Código es requerido'),
   descripcion: z.string().min(1, 'Descripción es requerida'),
   tipo: z.enum(['producto', 'servicio'], { message: 'Tipo es requerido' }),
+  moneda: z.enum(['VES', 'USD', 'EUR']),
+  precioUsd: z.number().optional(),
+  precioEur: z.number().optional(),
   precioBase: z.number().min(0.01, 'Precio debe ser mayor a 0'),
   ivaAplica: z.boolean(),
 });
@@ -59,6 +65,8 @@ export function ItemsPage() {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const { data: items = [], isLoading } = useItems();
+  const { data: bcvRate } = useBcvRate();
+  const { data: exchangeRates } = useExchangeRates();
   const createMutation = useCreateItem();
   const updateMutation = useUpdateItem();
   const deleteMutation = useDeleteItem();
@@ -75,8 +83,66 @@ export function ItemsPage() {
     defaultValues: {
       ivaAplica: true,
       tipo: 'producto',
+      moneda: 'VES',
     },
   });
+
+  // Auto-convert USD/EUR to VES
+  const moneda = watch('moneda');
+  const tipo = watch('tipo');
+  const precioUsd = watch('precioUsd');
+  const precioEur = watch('precioEur');
+  const precioBase = watch('precioBase');
+
+  // Auto-suggest code based on type
+  const handleTipoChange = (value: 'producto' | 'servicio') => {
+    setValue('tipo', value);
+    // Auto-suggest code prefix if creating new item
+    if (!editingItem) {
+      const prefix = value === 'producto' ? 'PROD-' : 'SERV-';
+      const existingCodes = items
+        .filter(item => item.tipo === value)
+        .map(item => item.codigo)
+        .filter(code => code.startsWith(prefix));
+
+      const numbers = existingCodes
+        .map(code => parseInt(code.replace(prefix, ''), 10))
+        .filter(num => !isNaN(num));
+
+      const nextNumber = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+      const suggestedCode = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+      setValue('codigo', suggestedCode);
+    }
+  };
+
+  // When currency is USD and price in USD changes, convert to VES
+  const handlePrecioUsdChange = (value: number) => {
+    setValue('precioUsd', value);
+    if (bcvRate && moneda === 'USD') {
+      setValue('precioBase', value * bcvRate.rate);
+    }
+  };
+
+  // When currency is EUR and price in EUR changes, convert to VES
+  const handlePrecioEurChange = (value: number) => {
+    setValue('precioEur', value);
+    if (exchangeRates && moneda === 'EUR') {
+      setValue('precioBase', value * exchangeRates.eur);
+    }
+  };
+
+  // When currency is VES, clear precioUsd and precioEur
+  const handleMonedaChange = (value: 'VES' | 'USD' | 'EUR') => {
+    setValue('moneda', value);
+    if (value === 'VES') {
+      setValue('precioUsd', undefined);
+      setValue('precioEur', undefined);
+    } else if (value === 'USD' && precioUsd && bcvRate) {
+      setValue('precioBase', precioUsd * bcvRate.rate);
+    } else if (value === 'EUR' && precioEur && exchangeRates) {
+      setValue('precioBase', precioEur * exchangeRates.eur);
+    }
+  };
 
   const filteredItems = items.filter(item => {
     const matchesSearch = 
@@ -220,7 +286,7 @@ export function ItemsPage() {
                     <Label htmlFor="tipo">Tipo *</Label>
                     <Select
                       value={watch('tipo')}
-                      onValueChange={(value) => setValue('tipo', value as 'producto' | 'servicio')}
+                      onValueChange={(value) => handleTipoChange(value as 'producto' | 'servicio')}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -249,16 +315,101 @@ export function ItemsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="precioBase">Precio Base (VES) *</Label>
-                  <MoneyInput
-                    value={watch('precioBase') || 0}
-                    onChange={(value) => setValue('precioBase', value)}
-                    placeholder="0,00"
-                  />
-                  {errors.precioBase && (
-                    <p className="text-sm text-destructive">{errors.precioBase.message}</p>
-                  )}
+                  <Label htmlFor="moneda">Moneda *</Label>
+                  <Select
+                    value={watch('moneda')}
+                    onValueChange={(value) => handleMonedaChange(value as 'VES' | 'USD' | 'EUR')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VES">Bolívares (Bs)</SelectItem>
+                      <SelectItem value="USD">Dólares (USD)</SelectItem>
+                      <SelectItem value="EUR">Euros (EUR)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {moneda === 'USD' && (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="precioUsd">Precio en USD *</Label>
+                        <BcvRateBadge />
+                      </div>
+                      <MoneyInput
+                        value={watch('precioUsd') || 0}
+                        onChange={handlePrecioUsdChange}
+                        placeholder="0.00"
+                      />
+                      {errors.precioUsd && (
+                        <p className="text-sm text-destructive">{errors.precioUsd.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="precioBase">Precio en Bs (Conversión Automática)</Label>
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-lg font-mono font-semibold">
+                          {formatVES(watch('precioBase') || 0)}
+                        </p>
+                        {bcvRate && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatUSD(watch('precioUsd') || 0)} × {bcvRate.rate} = {formatVES(watch('precioBase') || 0)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {moneda === 'EUR' && (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="precioEur">Precio en EUR *</Label>
+                        <EurRateBadge />
+                      </div>
+                      <MoneyInput
+                        value={watch('precioEur') || 0}
+                        onChange={handlePrecioEurChange}
+                        placeholder="0.00"
+                      />
+                      {errors.precioEur && (
+                        <p className="text-sm text-destructive">{errors.precioEur.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="precioBase">Precio en Bs (Conversión Automática)</Label>
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-lg font-mono font-semibold">
+                          {formatVES(watch('precioBase') || 0)}
+                        </p>
+                        {exchangeRates && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatEUR(watch('precioEur') || 0)} × {exchangeRates.eur} = {formatVES(watch('precioBase') || 0)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {moneda === 'VES' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="precioBase">Precio en Bs *</Label>
+                    <MoneyInput
+                      value={watch('precioBase') || 0}
+                      onChange={(value) => setValue('precioBase', value)}
+                      placeholder="0,00"
+                    />
+                    {errors.precioBase && (
+                      <p className="text-sm text-destructive">{errors.precioBase.message}</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -269,7 +420,7 @@ export function ItemsPage() {
                     }
                   />
                   <Label htmlFor="ivaAplica">
-                    Aplica IVA (16%)
+                    Aplica IVA
                   </Label>
                 </div>
 
@@ -361,7 +512,8 @@ export function ItemsPage() {
                 <TableHead>Código</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Precio Base</TableHead>
+                <TableHead>Moneda</TableHead>
+                <TableHead>Precio</TableHead>
                 <TableHead>IVA</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
@@ -369,13 +521,13 @@ export function ItemsPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Cargando productos y servicios...
                   </TableCell>
                 </TableRow>
               ) : filteredItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     No se encontraron productos o servicios
                   </TableCell>
                 </TableRow>
@@ -389,13 +541,25 @@ export function ItemsPage() {
                         {item.tipo === 'producto' ? 'Producto' : 'Servicio'}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {item.moneda || 'VES'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="font-mono">
-                      {formatVES(item.precioBase)}
+                      {item.moneda === 'USD' && item.precioUsd ? (
+                        <div>
+                          <div className="font-semibold text-blue-600">{formatUSD(item.precioUsd)}</div>
+                          <div className="text-xs text-muted-foreground">{formatVES(item.precioBase)}</div>
+                        </div>
+                      ) : (
+                        <div className="font-semibold">{formatVES(item.precioBase)}</div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {item.ivaAplica ? (
                         <Badge variant="outline" className="text-green-600">
-                          16%
+                          Sí
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-gray-500">

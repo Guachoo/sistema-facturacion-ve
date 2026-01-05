@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         id: '1',
         nombre: 'Usuario Demo',
         email: 'demo@empresa.com',
-        rol: 'admin'
+        rol: 'administrador'
       });
       setIsAuthenticated(true);
     }

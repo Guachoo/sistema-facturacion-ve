@@ -1,0 +1,150 @@
+{
+  "DocumentoElectronico": {
+    "Encabezado": {
+      "IdentificacionDocumento": {
+        "TipoDocumento": "01",
+        "NumeroDocumento": "00000001",
+        "TipoProveedor": "",
+        "TipoTransaccion": "",
+        "NumeroPlanillaImportacion": null,
+        "NumeroExpedienteImportacion": null,
+        "SerieFacturaAfectada": null,
+        "NumeroFacturaAfectada": null,
+        "FechaFacturaAfectada": null,
+        "MontoFacturaAfectada": null,
+        "ComentarioFacturaAfectada": null,
+        "RegimenEspTributacion": null,
+        "FechaEmision": "31/12/2025",
+        "FechaVencimiento": null,
+        "HoraEmision": "10:30:45 am",
+        "Anulado": false,
+        "TipoDePago": "Inmediato",
+        "Serie": "A",
+        "Sucursal": "0001",
+        "TipoDeVenta": "interna",
+        "Moneda": "VES",
+        "TransaccionId": null,
+        "UrlPdf": null
+      },
+      "Vendedor": null,
+      "Comprador": {
+        "TipoIdentificacion": "J",
+        "NumeroIdentificacion": "123456789",
+        "RazonSocial": "EMPRESA EJEMPLO C.A.",
+        "Direccion": "Av. Principal, Caracas",
+        "Pais": "VE",
+        "Telefono": ["0212-1234567"],
+        "Correo": ["contacto@ejemplo.com"]
+      },
+      "SujetoRetenido": null,
+      "Totales": {
+        "NroItems": "3",
+        "MontoGravadoTotal": "1000.00",
+        "MontoExentoTotal": "0.00",
+        "Subtotal": "1000.00",
+        "TotalAPagar": "1160.00",
+        "TotalIVA": "160.00",
+        "MontoTotalConIVA": "1160.00",
+        "MontoEnLetras": "MIL CIENTO SESENTA BOLÍVARES CON 00/100",
+        "TotalDescuento": "0.00",
+        "ListaDescBonificacion": null,
+        "ImpuestosSubtotal": [
+          {
+            "CodigoTotalImp": "G",
+            "AlicuotaImp": "16.00",
+            "BaseImponibleImp": "1000.00",
+            "ValorTotalImp": "160.00"
+          },
+          {
+            "CodigoTotalImp": "R",
+            "AlicuotaImp": "8.00",
+            "BaseImponibleImp": "0.00",
+            "ValorTotalImp": "0.00"
+          },
+          {
+            "CodigoTotalImp": "E",
+            "AlicuotaImp": "0.00",
+            "BaseImponibleImp": "0.00",
+            "ValorTotalImp": "0.00"
+          },
+          {
+            "CodigoTotalImp": "P",
+            "AlicuotaImp": "0.00",
+            "BaseImponibleImp": "0.00",
+            "ValorTotalImp": "0.00"
+          },
+          {
+            "CodigoTotalImp": "A",
+            "AlicuotaImp": "31.00",
+            "BaseImponibleImp": "0.00",
+            "ValorTotalImp": "0.00"
+          }
+        ],
+        "FormasPago": [
+          {
+            "Descripcion": "TRANSFERENCIA",
+            "Fecha": "31/12/2025",
+            "Forma": "03",
+            "Monto": "1160.00",
+            "Moneda": "VES",
+            "TipoCambio": null
+          }
+        ],
+        "TotalesRetencion": null
+      }
+    },
+    "DetallesItems": [
+      {
+        "NumeroLinea": "1",
+        "CodigoCIIU": null,
+        "CodigoPLU": "PROD001",
+        "IndicadorBienoServicio": "1",
+        "Descripcion": "Producto Ejemplo 1",
+        "Cantidad": "10.00",
+        "UnidadMedida": "NIU",
+        "PrecioUnitario": "50.00",
+        "PrecioUnitarioDescuento": null,
+        "MontoBonificacion": null,
+        "DescripcionBonificacion": null,
+        "DescuentoMonto": "0.00",
+        "PrecioItem": "500.00",
+        "CodigoImpuesto": "G",
+        "TasaIVA": "16.00",
+        "ValorIVA": "80.00",
+        "ValorTotalItem": "580.00",
+        "InfoAdicionalItem": null,
+        "ListaItemOTI": null
+      },
+      {
+        "NumeroLinea": "2",
+        "CodigoCIIU": null,
+        "CodigoPLU": "SERV001",
+        "IndicadorBienoServicio": "2",
+        "Descripcion": "Servicio Ejemplo",
+        "Cantidad": "5.00",
+        "UnidadMedida": "NIU",
+        "PrecioUnitario": "100.00",
+        "PrecioUnitarioDescuento": null,
+        "MontoBonificacion": null,
+        "DescripcionBonificacion": null,
+        "DescuentoMonto": "0.00",
+        "PrecioItem": "500.00",
+        "CodigoImpuesto": "G",
+        "TasaIVA": "16.00",
+        "ValorIVA": "80.00",
+        "ValorTotalItem": "580.00",
+        "InfoAdicionalItem": null,
+        "ListaItemOTI": null
+      }
+    ],
+    "DetallesRetencion": null,
+    "Viajes": null,
+    "InfoAdicional": [
+      {
+        "Campo": "Informativo",
+        "Valor": "Documento generado electrónicamente por el sistema Axiona Facturación."
+      }
+    ],
+    "GuiaDespacho": null
+  }
+}

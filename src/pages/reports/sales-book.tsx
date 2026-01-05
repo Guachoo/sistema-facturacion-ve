@@ -238,7 +238,7 @@ export function SalesBookPage() {
                 <TableHead>N° Factura</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Base Imponible</TableHead>
-                <TableHead>IVA (16%)</TableHead>
+                <TableHead>IVA</TableHead>
                 <TableHead>Exento</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Canal</TableHead>

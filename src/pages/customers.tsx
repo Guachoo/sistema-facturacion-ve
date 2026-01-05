@@ -34,10 +34,10 @@ import { toast } from 'sonner';
 import type { Customer } from '@/types';
 
 const customerSchema = z.object({
-  rif: z.string().min(1, 'RIF es requerido').refine(validateRIF, 'Formato de RIF inválido'),
+  rif: z.string().min(1, 'Documento es requerido').refine(validateRIF, 'Formato de documento inválido'),
   razonSocial: z.string().min(1, 'Razón social es requerida'),
   nombre: z.string().optional(),
-  domicilio: z.string().min(1, 'Domicilio es requerido'),
+  domicilio: z.string().optional(),
   telefono: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   tipoContribuyente: z.enum(['especial', 'ordinario', 'formal'], { message: 'Tipo de contribuyente es requerido' }),
@@ -73,7 +73,7 @@ export function CustomersPage() {
 
   const filteredCustomers = customers.filter(customer =>
     customer.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
-    customer.rif.toLowerCase().includes(search.toLowerCase())
+    customer.rif?.toLowerCase().includes(search.toLowerCase() || '')
   );
 
   const onSubmit = (data: CustomerForm) => {
@@ -171,7 +171,7 @@ export function CustomersPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="rif">RIF *</Label>
+                  <Label htmlFor="rif">Documento *</Label>
                   <RifInput
                     id="rif"
                     value={watch('rif') || ''}
@@ -203,7 +203,7 @@ export function CustomersPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="domicilio">Domicilio *</Label>
+                <Label htmlFor="domicilio">Domicilio</Label>
                 <Input
                   id="domicilio"
                   {...register('domicilio')}
@@ -280,7 +280,7 @@ export function CustomersPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre o RIF..."
+                placeholder="Buscar por nombre o documento..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -296,7 +296,7 @@ export function CustomersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>RIF</TableHead>
+                <TableHead>Documento</TableHead>
                 <TableHead>Razón Social</TableHead>
                 <TableHead>Domicilio</TableHead>
                 <TableHead>Contacto</TableHead>

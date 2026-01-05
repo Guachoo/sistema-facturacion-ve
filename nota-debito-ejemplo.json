@@ -1,0 +1,139 @@
+{
+    "documentoElectronico":{
+        "Encabezado": {
+            "IdentificacionDocumento": {
+                "TipoDocumento": "03",
+                "NumeroDocumento": "28010425",
+                "TipoProveedor": null,
+                "TipoTransaccion": null,
+                "NumeroPlanillaImportacion": null,
+                "NumeroExpedienteImportacion": null,
+                "SerieFacturaAfectada": "",
+                "NumeroFacturaAfectada": "31101828",
+                "FechaFacturaAfectada": "09/06/2025",
+                "MontoFacturaAfectada": "3460.00",
+                "ComentarioFacturaAfectada": "prueba nota de debito manual",
+                "RegimenEspTributacion": null,
+                "FechaEmision": "18/09/2025",
+                "FechaVencimiento": null,
+                "HoraEmision": "06:17:44 am",
+                "Anulado": false,
+                "TipoDePago": "Inmediato",
+                "Serie": "",
+                "Sucursal": null,
+                "TipoDeVenta": "interna",
+                "Moneda": "BSD",
+                "TransaccionId": null,
+                "UrlPdf": null
+            },
+            "Vendedor": null,
+            "Comprador": {
+                "TipoIdentificacion": "V",
+                "NumeroIdentificacion": "99999999",
+                "RazonSocial": "Instituto Universitario de Diseño Las Mercedes C.A",
+                "Direccion": "Av. Rio de Janeiro, cruce con calle Roraima, Qta Los Auelos, Urb. Chuao. Caracas",
+                "Ubigeo": null,
+                "Pais": "VE",
+                "Notificar": "Si",
+                "Telefono": [
+                    "0212/993.91.39 y 042"
+                ],
+                "Correo": [
+                    "prueba@yopmail.com"
+                ],
+                "OtrosEnvios": null
+            },
+            "SujetoRetenido": null,
+            "Tercero": null,
+            "Totales": {
+                "NroItems": "1",
+                "MontoGravadoTotal": "12.00",
+                "MontoExentoTotal": "0.00",
+                "MontoPercibidoTotal": null,
+                "SubtotalAntesDescuento": null,
+                "TotalDescuento": "0.00",
+                "TotalRecargos": null,
+                "Subtotal": "12.00",
+                "TotalIVA": "1.92",
+                "MontoTotalConIVA": "13.92",
+                "TotalAPagar": "13.92",
+                "MontoEnLetras": null,
+                "ListaRecargo": null,
+                "ListaDescBonificacion": null,
+                "ImpuestosSubtotal": [
+                    {
+                        "CodigoTotalImp": "G",
+                        "AlicuotaImp": "16.00",
+                        "BaseImponibleImp": "12.00",
+                        "ValorTotalImp": "1.92"
+                    },
+                    {
+                        "CodigoTotalImp": "R",
+                        "AlicuotaImp": "8.00",
+                        "BaseImponibleImp": "0.00",
+                        "ValorTotalImp": "0.00"
+                    },
+                    {
+                        "CodigoTotalImp": "E",
+                        "AlicuotaImp": "0.00",
+                        "BaseImponibleImp": "0.00",
+                        "ValorTotalImp": "0.00"
+                    },
+                    {
+                        "CodigoTotalImp": "A",
+                        "AlicuotaImp": "31.00",
+                        "BaseImponibleImp": "0.00",
+                        "ValorTotalImp": "0.00"
+                    }
+                ],
+                "FormasPago": [
+                    {
+                        "Descripcion": "TRANSFERENCIA",
+                        "Fecha": "09/06/2025",
+                        "Forma": "03",
+                        "Monto": "13.92",
+                        "Moneda": "BSD",
+                        "TipoCambio": null
+                    }
+                ],
+                "TotalIGTF": null,
+                "TotalIGTF_VES": null
+            },
+            "TotalesRetencion": null,
+            "TotalesOtraMoneda": null,
+            "Orden": null
+        },
+        "DetallesItems": [
+            {
+                "NumeroLinea": "1",
+                "CodigoCIIU": null,
+                "CodigoPLU": "SEND24",
+                "IndicadorBienoServicio": "2",
+                "Descripcion": "Servicio Trimestre de Mensajeria de Texto",
+                "Cantidad": "1.00",
+                "UnidadMedida": "NIU",
+                "PrecioUnitario": "12.00",
+                "PrecioUnitarioDescuento": null,
+                "MontoBonificacion": null,
+                "DescripcionBonificacion": null,
+                "DescuentoMonto": "0.00",
+                "RecargoMonto": null,
+                "PrecioItem": "12.00",
+                "PrecioAntesDescuento": null,
+                "CodigoImpuesto": "G",
+                "TasaIVA": "16.00",
+                "ValorIVA": "1.92",
+                "ValorTotalItem": "13.92",
+                "InfoAdicionalItem": null,
+                "ListaItemOTI": null
+            }
+        ],
+        "DetallesRetencion": null,
+        "Viajes": null,
+        "InfoAdicional": null,
+        "GuiaDespacho": null,
+        "Transporte": null,
+        "EsLote": null,
+        "EsMinimo": null
+    }
+}
