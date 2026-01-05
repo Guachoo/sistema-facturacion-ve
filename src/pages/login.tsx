@@ -53,7 +53,7 @@ export function LoginPage() {
             <img
               src="/assets/logos/axiona-logo.png"
               alt="Axiona"
-              className="h-32 w-auto"
+              className="h-40 w-auto"
             />
           </div>
           <CardDescription className="text-center text-base">
