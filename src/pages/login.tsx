@@ -50,9 +50,11 @@ export function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="h-12 w-12 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-2xl flex items-center justify-center">
-              <FileText className="h-7 w-7 text-white" />
-            </div>
+            <img
+              src="/assets/logos/axiona-logo.png"
+              alt="Axiona"
+              className="h-16 w-auto"
+            />
           </div>
           <CardTitle className="text-2xl text-center">Axiona</CardTitle>
           <CardDescription className="text-center">
