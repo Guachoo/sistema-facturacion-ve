@@ -121,9 +121,11 @@ export function Sidebar() {
     <div className="fixed inset-y-0 z-50 flex w-72 flex-col">
       <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4 dark:border-gray-800 dark:bg-gray-900">
         <div className="flex h-16 shrink-0 items-center">
-          <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-teal-600 rounded-lg flex items-center justify-center">
-            <FileText className="h-5 w-5 text-white" />
-          </div>
+          <img
+            src="/assets/logos/axiona-logo.png"
+            alt="Axiona"
+            className="h-10 w-auto"
+          />
           <span className="ml-3 text-xl font-bold">Axiona</span>
         </div>
         <nav className="flex flex-1 flex-col">

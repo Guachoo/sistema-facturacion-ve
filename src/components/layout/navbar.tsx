@@ -54,9 +54,11 @@ export function Navbar() {
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2 md:gap-6">
           <Link to="/dashboard" className="flex items-center space-x-2">
-            <div className="h-8 w-8 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg flex items-center justify-center">
-              <FileText className="h-5 w-5 text-white" />
-            </div>
+            <img
+              src="/assets/logos/axiona-logo.png"
+              alt="Axiona"
+              className="h-8 w-auto"
+            />
             <span className="text-lg md:text-xl font-bold">Axiona</span>
           </Link>
 
