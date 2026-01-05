@@ -49,15 +49,14 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-blue-950 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
+          <div className="flex items-center justify-center mb-6">
             <img
               src="/assets/logos/axiona-logo.png"
               alt="Axiona"
-              className="h-16 w-auto"
+              className="h-24 w-auto"
             />
           </div>
-          <CardTitle className="text-2xl text-center">Axiona</CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription className="text-center text-base">
             Sistema de Facturación Digital
           </CardDescription>
         </CardHeader>
