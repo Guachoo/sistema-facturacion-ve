@@ -121,28 +121,32 @@ export function CompanySettingsPage() {
       const { data, error } = await supabase
         .from('company_settings')
         .select('*')
-        .single();
+        .limit(1);
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows returned
         console.error('❌ Error al cargar configuración:', error);
         toast.error('Error al cargar la configuración de empresa');
         return;
       }
 
-      if (data) {
-        console.log('✅ Configuración cargada:', data);
+      if (data && data.length > 0) {
+        console.log('✅ Configuración cargada:', data[0]);
 
         const settings: CompanySettings = {
-          razonSocial: data.razon_social,
-          rif: data.rif,
-          domicilioFiscal: data.domicilio_fiscal,
-          telefonos: data.telefonos,
-          email: data.email,
-          condicionesVenta: data.condiciones_venta,
+          razonSocial: data[0].razon_social || '',
+          rif: data[0].rif || '',
+          domicilioFiscal: data[0].domicilio_fiscal || '',
+          telefonos: data[0].telefonos || '',
+          email: data[0].email || '',
+          condicionesVenta: data[0].condiciones_venta || '',
         };
 
         setCompanySettings(settings);
         reset(settings); // Actualizar valores del formulario
+      } else {
+        console.log('ℹ️ No hay configuración guardada, usando valores por defecto');
+        // No hay configuración, mantener mockData
       }
     } catch (error) {
       console.error('❌ Error al cargar configuración:', error);
@@ -157,18 +161,36 @@ export function CompanySettingsPage() {
       setIsSaving(true);
       console.log('💾 Guardando configuración de empresa en Supabase...', data);
 
+      // Primero verificar si ya existe un registro
+      const { data: existing, error: checkError } = await supabase
+        .from('company_settings')
+        .select('id')
+        .limit(1);
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error al verificar configuración:', checkError);
+        toast.error('Error al verificar la configuración existente');
+        return;
+      }
+
+      const companyData = {
+        id: 1, // ID fijo = solo una empresa
+        razon_social: data.razonSocial,
+        rif: data.rif,
+        domicilio_fiscal: data.domicilioFiscal,
+        telefonos: data.telefonos,
+        email: data.email,
+        condiciones_venta: data.condicionesVenta,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Usar upsert para insertar o actualizar
       const { error } = await supabase
         .from('company_settings')
-        .update({
-          razon_social: data.razonSocial,
-          rif: data.rif,
-          domicilio_fiscal: data.domicilioFiscal,
-          telefonos: data.telefonos,
-          email: data.email,
-          condiciones_venta: data.condicionesVenta,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', 1); // Asumiendo que solo hay una fila de configuración
+        .upsert(companyData, {
+          onConflict: 'id',
+          ignoreDuplicates: false,
+        });
 
       if (error) {
         console.error('❌ Error al guardar configuración:', error);
@@ -178,7 +200,7 @@ export function CompanySettingsPage() {
 
       console.log('✅ Configuración guardada exitosamente');
       setCompanySettings(data);
-      toast.success('Configuración de empresa actualizada correctamente');
+      toast.success('Configuración de empresa guardada correctamente');
     } catch (error) {
       console.error('❌ Error al guardar configuración:', error);
       toast.error('Error al guardar la configuración de empresa');
