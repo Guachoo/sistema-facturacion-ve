@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 import { renderHeaderFixed } from './pdf-header-renderer';
 import { GRU_LOGO_BASE64 } from './logo-base64';
 import { PDF_LAYOUT, PDF_COLORS, PDF_FONTS, formatBS, formatUSD } from './pdf-layout-constants';
+import { COMPANY_CONFIG } from '@/config/company';
 
 // ============================================
 // FUNCIÓN PRINCIPAL
