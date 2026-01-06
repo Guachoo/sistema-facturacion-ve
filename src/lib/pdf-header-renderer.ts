@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { GRU_LOGO_BASE64 } from './logo-base64';
 import { PDF_LAYOUT, PDF_COLORS } from './pdf-layout-constants';
+import { COMPANY_CONFIG } from '@/config/company';
 
 /**
  * Trunca texto para que quepa en un ancho específico
@@ -105,7 +106,7 @@ export function renderHeaderFixed(doc: jsPDF, factura: FacturaDB, debugMode: boo
   doc.setFont('helvetica', EMPRESA_BOX.TITLE.fontStyle);
   doc.setFontSize(EMPRESA_BOX.TITLE.fontSize);
 
-  const titulo = 'GRU CORPORACIÓN NAUTICA DE SERVICIOS, C.A.';
+  const titulo = COMPANY_CONFIG.razonSocial;
   const tituloTruncado = truncateToWidth(doc, titulo, EMPRESA_BOX.w);
   doc.text(tituloTruncado, empresaCenterX, yEmpresa, { align: 'center' });
 
@@ -115,13 +116,13 @@ export function renderHeaderFixed(doc: jsPDF, factura: FacturaDB, debugMode: boo
   doc.setTextColor(...PDF_COLORS.BLACK);
   doc.setFont('helvetica', EMPRESA_BOX.RIF.fontStyle);
   doc.setFontSize(EMPRESA_BOX.RIF.fontSize);
-  doc.text('R.I.F.: J-50725064-4', empresaCenterX, yEmpresa, { align: 'center' });
+  doc.text(`R.I.F.: ${COMPANY_CONFIG.rif}`, empresaCenterX, yEmpresa, { align: 'center' });
 
   yEmpresa += 5;
 
   // 2.3 Dirección Fiscal (máx 2 líneas)
   doc.setFontSize(EMPRESA_BOX.ADDRESS.fontSize);
-  const addressText = 'Dirección Fiscal: AV LA ESTANCIA CON CALLE BENERITO BLOHM CC CIUDAD TAMANACO. PIRAMIDE INVERTIDA NIVEL 6 OF 610 URB CHUAO CARACAS (CHACAO) MIRANDA ZONA POSTAL 1060';
+  const addressText = `Dirección Fiscal: ${COMPANY_CONFIG.domicilioFiscal}`;
 
   doc.setTextColor(...PDF_COLORS.RED);
   const addressLines = wrapMaxLines(doc, addressText, EMPRESA_BOX.w, EMPRESA_BOX.ADDRESS.maxLines);
